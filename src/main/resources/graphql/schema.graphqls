@@ -1,0 +1,35 @@
+type Paciente {
+    id: ID!
+    nome: String!
+    sobrenome: String!
+    cpf: String!
+    email: String!
+    telefone: String!
+    endereco: String!
+    dataNascimento: String!
+    dataCadastro: String!
+    situacaoCadastro: String!
+    historicos: [HistoricoPaciente!]!
+    agendamentos: [Agendamento!]!
+}
+
+type HistoricoPaciente {
+    id: ID!
+    queixaPrincipal: String
+    historicoDoenca: String!
+    medicamentos: String!
+    alergias: String!
+    observacoes: String
+}
+
+type Agendamento {
+    id: ID!
+    nomeMedico: String!
+    dataHoraConsulta: String!
+    observacoes: String
+    dataCadastro: String!
+}
+
+extend type Query {
+    getHistoricoPaciente(pacienteId: ID!): Paciente
+}
