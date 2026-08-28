@@ -30,13 +30,13 @@
 
 * 🔷 Spring for GraphQL
 
-* 🐳 Docker / Docker Compose
-
 * 🛠️ Gradle 9.7.1 (Kotlin DSL)
 
-* 🗄️ Spring Data JPA + Bean Validation
+* 🐳 Docker / Docker Compose
 
 * 📑 SpringDoc OpenAPI (Swagger UI)
+
+* 🗄️ Spring Data JPA + Bean Validation
 
 <br> 
 
