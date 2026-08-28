@@ -5,14 +5,18 @@
 <br> 
 
 <div align="center">
-  Turma 12ADJT – Projeto desenvolvido na pós-graduação em Arquitetura e Desenvolvimento em Java da FIAP. O objetivo é desenvolver uma API responsável pelo gerenciamento do histórico de consultas, com    armazenamento dos dados e disponibilização das informações por meio de uma interface GraphQL.
+  Turma 12ADJT – Projeto desenvolvido na pós-graduação em Arquitetura e Desenvolvimento em Java da FIAP. O objetivo é desenvolver uma API responsável pelo gerenciamento do histórico de consultas, com armazenamento dos dados e disponibilização das informações por meio de uma interface GraphQL.
 </div> 
 
  <br> <br> 
 
+> 🚧 **Status:** projeto em fase inicial. A estrutura de build, os perfis de execução, o logging e os arquivos de Docker já estão configurados. As entidades, os resolvers GraphQL e a suíte de testes ainda serão implementados.
+
+<br> 
+
 ## 🧰 Ferramentas Utilizadas
 
-* 🛠️ Gradle 9.7 (Kotlin DSL)
+* 🛠️ Gradle 9.7.1 (Kotlin DSL)
 
 * ☕️ Java 21
 
@@ -20,11 +24,11 @@
 
 * 🟢 Spring Boot 4.0.5
 
-* 🔐 Spring Security + JWT (jjwt)
+* 🔷 Spring for GraphQL
 
-* 🦅 Flyway (versionamento do banco)
+* 🗄️ Spring Data JPA + Bean Validation
 
-* 🔄 MapStruct + Lombok
+* 🔄 Lombok
 
 * 📝 Log4j2
 
@@ -38,30 +42,27 @@
 
 ## 📁 Estrutura do Projeto
 
-O código é organizado **por camada e, dentro de cada camada, por domínio** (`paciente`, `medico`, `enfermeiro`, `agendamento`, `usuario`, `auth`):
+O código é organizado **por camada e, dentro de cada camada, por domínio**:
 
 ```
-src/main/java/br/com/fiap/agendamentoapi/
-├── config/           # DataBaseConfig, SecurityConfig, SwaggerConfig e SecurityFilter
-├── controller/       # Endpoints REST
+src/main/java/br/com/fiap/historicoapi/
+├── config/           # Configurações (banco de dados, Swagger, GraphQL)
+├── controller/       # Resolvers GraphQL e endpoints REST
 ├── service/          # Regras de negócio
 ├── repository/       # Interfaces JpaRepository
 ├── model/
 │   ├── entity/       # Entidades JPA
 │   ├── dto/          # Modelos de saída
 │   ├── request/      # Modelos de entrada
-│   ├── mapper/       # Mapeamentos MapStruct
-│   └── response/     # PageResponse, MensagemSucessoResponse, TokenResponse
+│   └── response/     # Envelopes de resposta
 ├── exceptions/       # Exceções de negócio e GlobalExceptionHandler
-└── enums/            # TipoUsuario, SituacaoCadastro
+└── enums/
 
 src/main/resources/
-├── application.yaml              # Perfis dev, prod e test
-├── log4j2.xml                    # Console em dev; arquivo rotativo em prod
-└── db/migration/                 # Migrações Flyway (V1.0, V1.1, ...)
+├── application.yaml  # Perfis dev, prod e test
+├── log4j2.xml        # Console em dev; arquivo rotativo em prod
+└── graphql/          # Schemas .graphqls
 ```
-
-O esquema do banco é criado **exclusivamente pelo Flyway** — não há `ddl-auto`. Toda alteração de entidade exige uma nova migração `V<versão>__<Descrição>.sql`; migrações já aplicadas nunca devem ser editadas.
 
 <br> 
 
@@ -115,13 +116,13 @@ docker compose -f docker-compose-postgres.yml up -d
 
 Em seguida, execute a aplicação utilizando a opção `BootRun - DEV`. Dessa forma, a API será conectada automaticamente ao banco de dados configurado no Docker Compose, facilitando a execução do projeto em ambiente local e ficando disponível na porta `9017`.
 
-> ℹ️ A conexão com o banco é montada em `DataBaseConfig` a partir das variáveis `DATABASE_IP`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER` e `DATABASE_PASSWORD`. As configurações de execução do IntelliJ (`.run/`) já definem esses valores; ao rodar pelo terminal, exporte-os antes de iniciar a aplicação.
+> ℹ️ A conexão com o banco é montada a partir das variáveis `DATABASE_IP`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER` e `DATABASE_PASSWORD`. As configurações de execução do IntelliJ (`.run/`) já definem esses valores; ao rodar pelo terminal, exporte-os antes de iniciar a aplicação.
 
 <br> 
 
 ## 🚀 Produção
 
-Para execução em ambiente de produção, o projeto disponibiliza o arquivo `docker-compose-agendamentoapi.yml`. Antes de iniciar a aplicação, é necessário configurar o arquivo `.env` com as variáveis de conexão do banco de dados, conforme o ambiente desejado:
+Para execução em ambiente de produção, o projeto disponibiliza o arquivo `docker-compose-historicoapi.yml`. Antes de iniciar a aplicação, é necessário configurar o arquivo `.env` com as variáveis de conexão do banco de dados, conforme o ambiente desejado:
 
 ```bash
 # DATABASE_PORT
@@ -135,18 +136,10 @@ $ Exemplo: postgres
 
 # DATABASE_PASSWORD
 $ Exemplo: postgres@2026
-
-# JWT_SECRET
-$ Exemplo: uma string aleatória com pelo menos 32 caracteres
-
-# JWT_EXPIRATION_MS
-$ Exemplo: 86400000 (24 horas)
 ```
 
-> ⚠️ `JWT_SECRET` e `JWT_EXPIRATION_MS` possuem valores padrão embutidos no código apenas para facilitar o desenvolvimento local. Em produção, defina obrigatoriamente um `JWT_SECRET` próprio — o valor padrão é público, pois está versionado no repositório.
-
 > ℹ️ Importante: a variável `DATABASE_PORT` representa a porta utilizada pela aplicação para se conectar ao banco de dados dentro da rede interna do Docker.
-O valor padrão é `5432`. Caso deseje alterar essa porta no arquivo  `.env`, também será necessário ajustar o arquivo `docker-compose-agendamentoapi.yml`, atualizando a porta interna do container PostgreSQL para o mesmo valor configurado.
+O valor padrão é `5432`. Caso deseje alterar essa porta no arquivo  `.env`, também será necessário ajustar o arquivo `docker-compose-historicoapi.yml`, atualizando a porta interna do container PostgreSQL para o mesmo valor configurado.
 
 ```yaml
 ports:
@@ -179,70 +172,32 @@ Dessa forma, a API será iniciada utilizando as variáveis definidas no arquivo 
 
 <br> 
 
-## 🔐 Autenticação
+## 🌐 GraphQL
 
-A API utiliza autenticação via **JWT (JSON Web Token)**. Antes de acessar qualquer endpoint protegido, é necessário realizar login para obter um token de acesso.
-
-```bash
-# Endpoint de login
-POST /v1/auth/login
-```
-
-A resposta traz o token que deve ser enviado no header `Authorization` das próximas requisições:
-
-```json
-{
-  "token": "eyJhbGciOiJIUzUxMiJ9...",
-  "tipo": "Bearer"
-}
-```
+Todas as rotas da aplicação são relativas ao context path **`/HistoricoAPI`**. A interface GraphQL é exposta em:
 
 ```bash
-Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
+# Perfil DEV
+$ POST http://localhost:9017/HistoricoAPI/graphql
+
+# Perfil PROD
+$ POST http://localhost:9027/HistoricoAPI/graphql
 ```
 
-O token expira em 24 horas (configurável via `JWT_EXPIRATION_MS`). Após expirar, é necessário realizar login novamente.
+Os schemas ficam em `src/main/resources/graphql/` e são carregados automaticamente pelo Spring for GraphQL.
 
-> ⚠️ Cadastro (`POST`) de Médico, Paciente e Enfermeiro **não exige token** (autocadastro livre). Todas as demais operações — listar, atualizar e excluir — exigem um usuário autenticado.
+> ℹ️ A interface interativa **GraphiQL** vem desabilitada por padrão. Para utilizá-la durante o desenvolvimento, adicione ao bloco do perfil `dev` em `application.yaml`:
 
-<br>
+```yaml
+spring:
+  graphql:
+    graphiql:
+      enabled: true
+```
 
-### Sobre as senhas no banco de dados
+> ℹ️ As listagens paginadas utilizam numeração iniciada em **1**, e não em 0.
 
-O projeto utiliza **BCrypt** para armazenar senhas. Isso significa que a senha de um usuário **nunca** fica salva em texto puro no banco — o que aparece na coluna `senha` (por exemplo, `$2y$05$ZpywJEw26dx/wK55JdAE7uSjF00ckF.qZwx4zqlVrKUjVxsIXr66a`) é um **hash criptográfico**, gerado a partir da senha real combinada com um valor aleatório (chamado de "sal"). Esse processo é de mão única: não existe forma de reverter o hash de volta para a senha original.
-
-Para fazer login, você sempre usa a senha **em texto puro** que foi escolhida no cadastro — nunca o hash salvo no banco.
-
-> ℹ️ Hoje, no seed de testes, todos os usuários compartilham o **mesmo hash** no banco — isso é só uma facilidade para os testes locais. Usuários cadastrados normalmente pela API terão hashes diferentes entre si mesmo usando a mesma senha, pois o BCrypt gera um sal aleatório novo a cada cadastro.
-
-<br>
-
-## 🌐 Endpoints
-
-Todas as rotas abaixo são relativas ao context path **`/AgendamentoAPI`**.
-
-| Método   | Rota                  | Autenticação | Descrição                                        |
-| -------- | --------------------- | ------------ | ------------------------------------------------ |
-| `POST`   | `/v1/auth/login`      | Pública      | Autentica o usuário e devolve o token JWT        |
-| `GET`    | `/v1/medico`          | Requerida    | Lista os médicos (paginado)                      |
-| `POST`   | `/v1/medico`          | Pública      | Cadastra um médico                               |
-| `PATCH`  | `/v1/medico/{id}`     | Requerida    | Atualiza os dados de um médico                   |
-| `DELETE` | `/v1/medico/{id}`     | Requerida    | Exclui logicamente um médico                     |
-| `GET`    | `/v1/enfermeiro`      | Requerida    | Lista os enfermeiros (paginado)                  |
-| `POST`   | `/v1/enfermeiro`      | Pública      | Cadastra um enfermeiro                           |
-| `PATCH`  | `/v1/enfermeiro/{id}` | Requerida    | Atualiza os dados de um enfermeiro               |
-| `DELETE` | `/v1/enfermeiro/{id}` | Requerida    | Exclui logicamente um enfermeiro                 |
-| `GET`    | `/v1/paciente`        | Requerida    | Lista os pacientes (paginado)                    |
-| `POST`   | `/v1/paciente`        | Pública      | Cadastra um paciente                             |
-| `PATCH`  | `/v1/paciente/{id}`   | Requerida    | Atualiza os dados de um paciente                 |
-| `DELETE` | `/v1/paciente/{id}`   | Requerida    | Exclui logicamente um paciente                   |
-| `GET`    | `/v1/agendamento`     | Requerida    | Lista as consultas agendadas (paginado)          |
-| `POST`   | `/v1/agendamento`     | Requerida    | Agenda uma nova consulta                         |
-| `PATCH`  | `/v1/agendamento/{id}`| Requerida    | Reagenda a data e hora de uma consulta           |
-
-> ℹ️ A exclusão é **lógica**: o registro não é removido do banco, apenas tem sua situação de cadastro alterada para `EXCLUIDO`.
-
-> ℹ️ As listagens são paginadas e a numeração começa em **1**. Utilize os parâmetros `page`, `size` e `sort` (por exemplo, `/v1/paciente?page=1&size=20&sort=nome`).
+> ⚠️ O context path diferencia maiúsculas de minúsculas: utilize `/HistoricoAPI`, e não `/historicoapi`.
 
 <br> 
 
@@ -252,7 +207,7 @@ Para acessar a documentação da API, inicie a aplicação utilizando a opção 
 
 ```bash
 # URL para acessar a documentação da API 
-$ http://localhost:9017/AgendamentoAPI/swagger-ui/index.html
+$ http://localhost:9017/HistoricoAPI/swagger-ui/index.html
 ```
 
 <br> 
@@ -261,10 +216,8 @@ Caso inicie a aplicação utilizando a opção `BootRun - PROD` e acesse o link 
 
 ```bash
 # URL para acessar a documentação da API 
-$ http://localhost:9027/AgendamentoAPI/swagger-ui/index.html
+$ http://localhost:9027/HistoricoAPI/swagger-ui/index.html
 ```
-
-> ⚠️ O context path diferencia maiúsculas de minúsculas: utilize `/AgendamentoAPI`, e não `/agendamentoapi`.
 
 <br> 
 
@@ -277,7 +230,7 @@ docker compose -f docker-compose-postgres.yml up -d
 ./gradlew test
 ```
 
-Os testes utilizam o perfil `test`, que carrega a configuração de banco de `TestDataBaseConfig` (com valores padrão apontando para `localhost:8745`) e executam dentro de transações revertidas ao final de cada caso. Os payloads das requisições dos testes de controller ficam em `src/test/resources/<dominio>/`, lidos por caminho relativo — portanto, execute os testes a partir da raiz do projeto.
+Os testes utilizam o perfil `test` e devem ser executados a partir da raiz do projeto.
 
 Ao final da execução, o **JaCoCo** gera o relatório de cobertura em:
 
@@ -285,11 +238,7 @@ Ao final da execução, o **JaCoCo** gera o relatório de cobertura em:
 build/reports/jacoco/test/html/index.html
 ```
 
-<br> 
-
-## 🔄 Integração Contínua
-
-O workflow em `.github/workflows/workflow.yml` é acionado a cada Pull Request aberto contra a branch `main`. Ele sobe um container PostgreSQL, configura o Java 21 e executa `./gradlew build`, garantindo que a compilação e os testes automatizados passem antes do merge.
+> ℹ️ Os pacotes `config`, `enums`, `exceptions` e `model`, além da classe `HistoricoAPIApplication`, são intencionalmente excluídos do cálculo de cobertura.
 
 <br> 
 
