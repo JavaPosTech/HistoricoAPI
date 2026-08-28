@@ -16,27 +16,27 @@
 
 ## 🧰 Ferramentas Utilizadas
 
-* 🛠️ Gradle 9.7.1 (Kotlin DSL)
+* 🔄 Lombok
+
+* 📝 Log4j2
 
 * ☕️ Java 21
 
 * 🐘 PostgreSQL 18
 
+* 🧪 JUnit 5 + JaCoCo
+
 * 🟢 Spring Boot 4.0.5
 
 * 🔷 Spring for GraphQL
 
+* 🐳 Docker / Docker Compose
+
+* 🛠️ Gradle 9.7.1 (Kotlin DSL)
+
 * 🗄️ Spring Data JPA + Bean Validation
 
-* 🔄 Lombok
-
-* 📝 Log4j2
-
 * 📑 SpringDoc OpenAPI (Swagger UI)
-
-* 🧪 JUnit 5 + JaCoCo
-
-* 🐳 Docker / Docker Compose
 
 <br> 
 
