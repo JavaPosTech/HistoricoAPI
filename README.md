@@ -18,9 +18,9 @@
 
 * 📝 Log4j2
 
-* 🔄 Lombok
-
 * ☕️ Java 21
+  
+* 🔄 Lombok
 
 * 🐘 PostgreSQL 18
 
