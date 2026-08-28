@@ -5,7 +5,7 @@
 <br> 
 
 <div align="center">
-    Turma 12ADJT – Projeto desenvolvido na pós-graduação em Arquitetura e Desenvolvimento em Java da FIAP. O objetivo é desenvolver um sistema hospitalar baseado em microsserviços, com serviços independentes para o gerenciamento de agendamentos e envio de notificações, utilizando Spring Security para autenticação e autorização e comunicação assíncrona entre os serviços.
+  Turma 12ADJT – Projeto desenvolvido na pós-graduação em Arquitetura e Desenvolvimento em Java da FIAP. O objetivo é desenvolver uma API responsável pelo gerenciamento do histórico de consultas, com    armazenamento dos dados e disponibilização das informações por meio de uma interface GraphQL.
 </div> 
 
  <br> <br> 
