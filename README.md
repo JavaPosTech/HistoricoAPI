@@ -16,9 +16,9 @@
 
 ## 🧰 Ferramentas Utilizadas
 
-* 🔄 Lombok
-
 * 📝 Log4j2
+
+* 🔄 Lombok
 
 * ☕️ Java 21
 
