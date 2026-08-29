@@ -316,7 +316,7 @@ public class SwaggerConfig {
                 .addProperty("data", new ObjectSchema()
                         .description("Resultado da operação.")
                         .nullable(true)
-                        .addProperty("getHistoricoPaciente", new Schema<>().$ref(REF_PACIENTE)))
+                        .addProperty("getHistoricoPaciente", new Schema<>().$ref(REF_PACIENTE).nullable(true)))
                 .addProperty("errors", new ArraySchema()
                         .items(new Schema<>().$ref(REF_ERRO_GRAPHQL))
                         .description("Presente somente quando a execução produz erros."));
