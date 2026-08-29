@@ -9,6 +9,7 @@ import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.execution.ErrorType;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -67,8 +69,7 @@ public class GlobalExceptionHandler {
                 "Requisição Inválida!",
                 pHttpServletRequest.getRequestURI(),
                 "/HistoricoAPI/problems/unreadable-message",
-                ex.getMostSpecificCause().getMessage(),
-                ex.getMessage());
+                ex.getMostSpecificCause().getMessage());
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -132,12 +133,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDuplicateResourceException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
+        log.error("Violação de integridade de dados! - URI: [{}]", pHttpServletRequest.getRequestURI(), ex);
+
         var response = new ErrorResponseDTO(
                 HttpStatus.CONFLICT.value(),
                 "Conflito de Dados!",
                 pHttpServletRequest.getRequestURI(),
                 "/HistoricoAPI/problems/data-integrity-violation",
-                ex.getMessage());
+                "A operação viola uma restrição de integridade dos dados.");
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
@@ -145,12 +148,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleInternalServerErrorException(Exception ex, HttpServletRequest pHttpServletRequest) {
 
+        log.error("Erro inesperado ao processar a requisição! - URI: [{}]", pHttpServletRequest.getRequestURI(), ex);
+
         var response = new ErrorResponseDTO(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erro Interno no Servidor!",
                 pHttpServletRequest.getRequestURI(),
                 "/HistoricoAPI/problems/internal-server-error",
-                ex.getMessage());
+                "Falha inesperada ao processar a requisição.");
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

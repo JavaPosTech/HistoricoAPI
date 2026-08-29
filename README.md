@@ -15,7 +15,7 @@
   <img alt="Spring Boot 4.0.5" src="https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F?style=flat-square&logo=springboot&logoColor=white" />
   <img alt="PostgreSQL 18" src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
   <img alt="Cobertura de linhas 100%" src="https://img.shields.io/badge/cobertura%20de%20linhas-100%25-brightgreen?style=flat-square" />
-  <img alt="Cobertura de branches 87%" src="https://img.shields.io/badge/cobertura%20de%20branches-87%25-green?style=flat-square" />
+  <img alt="Cobertura de branches 100%" src="https://img.shields.io/badge/cobertura%20de%20branches-100%25-brightgreen?style=flat-square" />
 </div>
 
  <br> <br> 
@@ -46,7 +46,7 @@
 
 * 📑 SpringDoc OpenAPI (Swagger UI)
 
-* 🗄️ Spring Data JPA + Bean Validation
+* 🗄️ Spring Data JPA
 
 <br> 
 
@@ -367,7 +367,7 @@ Os dois cenários reais funcionam sem configuração adicional: em um **banco va
 
 ### 📊 Cobertura
 
-A suíte conta atualmente com **14 testes distribuídos em 6 classes**, cobrindo o resolver GraphQL, a camada de serviço, os três repositórios e o utilitário de formatação de datas.
+A suíte conta atualmente com **28 testes distribuídos em 7 classes**, cobrindo o resolver GraphQL (pelo `GraphQlTester` e pelo transporte HTTP real), os caminhos de erro `NOT_FOUND` e `BAD_REQUEST`, a camada de serviço, os três repositórios e o utilitário de formatação de datas.
 
 | Métrica | Cobertura |
 | --- | --- |
@@ -375,7 +375,7 @@ A suíte conta atualmente com **14 testes distribuídos em 6 classes**, cobrindo
 | 📏 Linhas | **100%** |
 | 🔧 Métodos | **100%** |
 | 📦 Classes | **100%** |
-| 🔀 Branches | **87%** |
+| 🔀 Branches | **100%** |
 
 Ao final da execução, o **JaCoCo** gera o relatório completo em:
 

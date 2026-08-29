@@ -34,16 +34,13 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-graphql")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
 	// Lombok
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 
-	// Logging
-	implementation("org.slf4j:slf4j-api")
-	implementation("org.apache.logging.log4j:log4j-slf4j-impl")
+	// Logging - o starter já traz o slf4j-api e o binding log4j-slf4j2-impl
 	implementation("org.springframework.boot:spring-boot-starter-log4j2")
 
 	// PostgreSQL
@@ -54,7 +51,6 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-graphql-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 
 	// Flyway - somente no classpath de teste: as migrations criam o schema da suite,
 	// enquanto em dev e prod o schema continua vindo da AgendamentoAPI
