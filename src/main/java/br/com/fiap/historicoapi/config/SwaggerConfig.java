@@ -143,6 +143,9 @@ public class SwaggerConfig {
                 .tags(List.of(new Tag()
                         .name(TAG_GRAPHQL)
                         .description("Endpoint de transporte HTTP do Spring for GraphQL.")))
+                .servers(List.of(new io.swagger.v3.oas.models.servers.Server()
+                        .url("/HistoricoAPI")
+                        .description("Context path da aplicação")))
                 .components(componentes())
                 .path(GRAPHQL_PATH, caminhoGraphQl());
     }
