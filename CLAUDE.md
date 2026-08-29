@@ -29,9 +29,9 @@ Ela devolve os dados cadastrais do paciente junto com o histórico clínico (`hi
 | Logging | Log4j2 (SLF4J) — Logback **excluído** do classpath |
 | Docs | SpringDoc OpenAPI 3.1.0 (Swagger UI) |
 | Boilerplate | Lombok |
-| Testes | JUnit 5 + AssertJ + JaCoCo |
+| Testes | JUnit 5 + JaCoCo |
 
-Não há Spring Security nem MapStruct neste projeto. O Flyway existe **apenas no classpath de teste** (ver "Testes e Cobertura"); no runtime de dev e prod ele não está presente. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
+Não há Spring Security, MapStruct nem Bean Validation neste projeto — a API é somente de leitura e não recebe payload, então o `spring-boot-starter-validation` foi removido por não ter uso. O Flyway existe **apenas no classpath de teste** (ver "Testes e Cobertura"); no runtime de dev e prod ele não está presente. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
 
 **A API não possui autenticação.** Não existe filtro de autenticação no classpath e as requisições são atendidas sem credencial. Por isso o `SwaggerConfig` **não** declara nenhum security scheme: documentar um `bearerAuth` que nada valida faria a Swagger UI pedir um token inócuo e passaria a impressão de que o endpoint é protegido. Enquanto a autenticação não for de fato implementada, a documentação deve continuar dizendo que ela não existe.
 
@@ -168,6 +168,8 @@ Optional<Paciente> findById(@NonNull Integer id);
 
 **Tratamento de erros em dois pipelines.** O pipeline do GraphQL não passa pelo `HandlerExceptionResolver` do Spring MVC, então `GlobalExceptionHandler` mantém dois conjuntos de handlers: os `@ExceptionHandler` (respostas REST com `ErrorResponseDTO`) e os `@GraphQlExceptionHandler` (que devolvem `GraphQLError` com o `ErrorType` correto). **Ao criar uma nova exceção de negócio, registre-a nos dois lugares** — sem o handler GraphQL ela chega ao cliente como `INTERNAL_ERROR` com a mensagem mascarada.
 
+**Não devolva `ex.getMessage()` de exceção que não seja nossa.** Os handlers de `Exception` e de `DataIntegrityViolationException` logam a exceção completa com `log.error(..., ex)` e respondem com texto fixo: a mensagem do Postgres carrega nome de tabela, coluna e constraint, e a de uma falha inesperada pode trazer qualquer detalhe interno. Só as exceções do próprio domínio (`RequisicaoInvalidaException`, `PacienteNaoEncontradoException`) têm mensagem escrita para o cliente e podem ser repassadas.
+
 **Validação no serviço.** `HistoricoService.validarPacienteId` rejeita `null` e valores `<= 0` com `RequisicaoInvalidaException`; paciente inexistente vira `PacienteNaoEncontradoException`. Log de entrada e de saída com `@Slf4j`.
 
 **Idioma.** Código, nomes de classes, mensagens e logs em **português**, seguindo o que já existe no repositório e nos projetos irmãos.
@@ -199,29 +201,34 @@ Classes base em `src/test/java/br/com/fiap/historicoapi/config/`:
 
 - `AbstractTest` — concentra `@Transactional`, `@ActiveProfiles("test")`, `@Import(TestDataBaseConfig.class)` e `@TestMethodOrder`. Base dos testes de serviço, repositório e utilitários.
 - `AbstractControllerTest` — o mesmo, mais `@AutoConfigureGraphQlTester` e o helper `executarQuery(documento, nomeVariavel, valor)`.
+- `AbstractHttpControllerTest` — o mesmo helper, mas com `@AutoConfigureHttpGraphQlTester` e **sem `@Transactional`**: a query sai pela camada HTTP de verdade, passando pelo context path e sem transação aberta pelo teste. Exige `@SpringBootTest(webEnvironment = RANDOM_PORT)` na classe concreta.
 
 Convenções ao escrever testes, seguindo o que já existe:
 
-- Herde de `AbstractTest` ou `AbstractControllerTest` e não repita as anotações delas na classe concreta.
+- Herde de `AbstractTest`, `AbstractControllerTest` ou `AbstractHttpControllerTest` e não repita as anotações delas na classe concreta.
 - Use `org.junit.jupiter.api.Assertions` de forma qualificada (`Assertions.assertEquals(...)`). O AssertJ está no classpath, mas o padrão do projeto é o `Assertions` do JUnit.
 - Nomeie os métodos como `<método><Cenário>Test` — por exemplo `buscarHistoricoPorPacienteIdNullTest`, `formatarLocalDateTimeNullTest`.
 - Não use `@Order` nas classes concretas a menos que a ordem realmente importe; a ordenação já vem da classe abstrata.
 - Testes que precisam de contexto Spring levam `@SpringBootTest`. Testes puramente unitários (como `FormatadorDataTest`) herdam de `AbstractTest` só por consistência, sem `@SpringBootTest`, e por isso não sobem contexto nem exigem o banco.
 
-**GraphQL nos testes.** `HistoricoController` não expõe rota REST — o `@RequestMapping` na classe não cria endpoint algum. Testar via `MockMvc` em `/v1/historico/{id}` não funciona. O caminho correto é o `GraphQlTester`, passando o id como **variável** da query:
+**GraphQL nos testes.** `HistoricoController` não expõe rota REST alguma: é um `@Controller` só com `@QueryMapping`, então não há URL para exercitar com `MockMvc`. O caminho correto é o `GraphQlTester`, passando o id como **variável** da query:
 
 ```java
-executarQuery(QUERY_HISTORICO_PACIENTE, "pacienteId", 1)
+executarQuery(QueryGraphQl.HISTORICO_PACIENTE, "pacienteId", 1)
         .path("getHistoricoPaciente")
         .entity(PacienteDTO.class)
         .get();
 ```
 
-`@AutoConfigureGraphQlTester` executa contra o `ExecutionGraphQlService`, sem camada HTTP — por isso o context path não interfere. Para exercitar o transporte HTTP de verdade, use `@AutoConfigureHttpGraphQlTester` com `@SpringBootTest(webEnvironment = RANDOM_PORT)`.
+O documento da query fica em `QueryGraphQl`, no pacote de teste do controller, compartilhado pelas duas classes de teste — não duplique a query ao criar um teste novo.
+
+`@AutoConfigureGraphQlTester` executa contra o `ExecutionGraphQlService`, sem camada HTTP — por isso o context path não interfere. Para exercitar o transporte HTTP de verdade, herde de `AbstractHttpControllerTest`, que já traz `@AutoConfigureHttpGraphQlTester`; a classe concreta precisa declarar `@SpringBootTest(webEnvironment = RANDOM_PORT)`.
+
+Os caminhos de erro são verificados pelo `.errors().satisfy(...)`, comparando o `ErrorType` (`NOT_FOUND`, `BAD_REQUEST`) e a mensagem. É o único teste que cobre os `@GraphQlExceptionHandler`, já que o pacote `exceptions/` está fora do cálculo do JaCoCo e uma regressão ali não apareceria na métrica.
 
 **Cobertura.** `jacocoTestReport` roda automaticamente depois de `test` e gera o HTML em `build/reports/jacoco/test/html/index.html`. A cobertura **exclui** de propósito `config/`, `enums/`, `exceptions/`, `model/` e a classe `HistoricoAPIApplication` — note que `util/` **não** está excluído e conta no cálculo. Mantenha essa lista alinhada se novos pacotes puramente estruturais forem criados, e atualize a tabela de cobertura do `README.md` quando o número mudar.
 
-Situação atual: 14 testes em 6 classes, com 100% de instruções, linhas, métodos e classes, e 87% de branches. O único branch descoberto é o `pacienteId <= 0` em `HistoricoService.validarPacienteId` — a suíte cobre `null` e id inexistente, mas não um id zero ou negativo.
+Situação atual: 28 testes em 7 classes, com 100% de instruções, linhas, métodos, classes e branches. O branch `pacienteId <= 0` de `HistoricoService.validarPacienteId`, que antes ficava descoberto, é exercitado com id zero e negativo tanto no teste de serviço quanto no de controller.
 
 ## Docker
 
