@@ -36,11 +36,11 @@
 
 * 🔷 Spring for GraphQL
 
+* 🔄 GitHub Actions (CI)
+
 * 🛠️ Gradle 9.7.1 (Kotlin DSL)
 
 * 🐳 Docker / Docker Compose
-
-* 🔄 GitHub Actions (CI)
 
 * 📑 SpringDoc OpenAPI (Swagger UI)
 
@@ -118,7 +118,7 @@ Os microsserviços da Fase 3 compartilham **um único PostgreSQL**. O banco sobe
                        ┌──────────────────────┐
                        │   rede: shared-net   │
                        │                      │
-   host:8745  ────────▶│  postgres:5432       │◀──── AgendamentoAPI  (host:9027)
+   host:8745  ────────▶│  postgres:5432      │◀──── AgendamentoAPI  (host:9027)
                        │                      │◀──── HistoricoAPI    (host:9028)
                        └──────────────────────┘
 ```
