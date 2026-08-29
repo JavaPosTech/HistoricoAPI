@@ -1,19 +1,16 @@
 package br.com.fiap.historicoapi.repository.historicopaciente;
 
 import br.com.fiap.historicoapi.model.entity.historicopaciente.HistoricoPaciente;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface HistoricoPacienteRepository extends JpaRepository<HistoricoPaciente, Integer> {
 
     @EntityGraph(attributePaths = {"paciente"})
-    Page<HistoricoPaciente> findAll(Pageable pageable);
-
-    @EntityGraph(attributePaths = {"paciente"})
-    Page<HistoricoPaciente> findByPacienteId(Integer pacienteId, Pageable pageable);
+    List<HistoricoPaciente> findByPacienteId(Integer pacienteId);
 
 }

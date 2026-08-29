@@ -9,8 +9,8 @@ type Paciente {
     dataNascimento: String!
     dataCadastro: String!
     situacaoCadastro: String!
-    historicos: [HistoricoPaciente!]!
-    agendamentos: [Agendamento!]!
+    historico: [HistoricoPaciente!]!
+    consultas: [Agendamento!]!
 }
 
 type HistoricoPaciente {
@@ -19,14 +19,14 @@ type HistoricoPaciente {
     historicoDoenca: String!
     medicamentos: String!
     alergias: String!
-    observacoes: String
+    observacao: String
 }
 
 type Agendamento {
     id: ID!
     nomeMedico: String!
     dataHoraConsulta: String!
-    observacoes: String
+    observacao: String
     dataCadastro: String!
 }
 
