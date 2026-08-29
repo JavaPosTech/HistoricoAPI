@@ -35,6 +35,12 @@ spring:
     error:
       include-stacktrace: never
 
+# http://localhost:9017/HistoricoAPI/swagger-ui/index.html
+springdoc:
+  swagger-ui:
+    display-request-duration: true
+    tags-sorter: alpha
+
 ---
 
 spring:

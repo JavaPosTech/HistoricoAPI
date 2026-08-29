@@ -303,6 +303,32 @@ $ http://localhost:9028/HistoricoAPI/swagger-ui/index.html
 
 <br> 
 
+O documento OpenAPI bruto, caso queira importá-lo em outra ferramenta, fica em `/HistoricoAPI/v3/api-docs`.
+
+<br> 
+
+### 📌 O que está documentado
+
+Como a API **não expõe rotas REST**, o SpringDoc não teria nada a inspecionar por conta própria: a Swagger UI subiria com a mensagem *"No operations defined in spec"*. Por isso a classe `SwaggerConfig` declara manualmente o endpoint de transporte do GraphQL, e a documentação passa a cobrir:
+
+| Item | Descrição |
+| --- | --- |
+| `POST /graphql` | Endpoint único da API, com o corpo da requisição (`query`, `operationName` e `variables`) e um exemplo pronto da query `getHistoricoPaciente`. |
+| `GraphQlRequest` | Formato do corpo de uma requisição GraphQL sobre HTTP. |
+| `GraphQlResponse` | Envelope `{ data, errors }` definido pela especificação GraphQL. |
+| `GraphQlError` | Estrutura de erro do GraphQL, incluindo `extensions.classification`. |
+| `PacienteDTO`, `HistoricoPacienteDTO`, `AgendamentoDTO` | Modelos de saída, resolvidos automaticamente a partir das anotações `@Schema` dos próprios records. |
+| `ErrorResponseDTO` | Resposta de erro do `GlobalExceptionHandler` do Spring MVC, usada nos códigos `400` e `500`. |
+
+A resposta `200` traz três exemplos — paciente encontrado, paciente inexistente (`NOT_FOUND`) e id inválido (`BAD_REQUEST`) —, o que deixa explícito o comportamento do GraphQL de responder `200` mesmo quando a execução falha, sinalizando o problema no array `errors`.
+
+
+> ⚠️ Os campos declarados como `ID!` no schema GraphQL trafegam como **String** na resposta (`"1"`), embora os *schemas* da página os descrevam como inteiros — a conversão é feita pela própria especificação GraphQL.
+
+> ℹ️ A API **não exige autenticação** e a documentação não declara nenhum *security scheme*: não há Spring Security no classpath nem filtro de autenticação neste projeto.
+
+<br> 
+
 ## 🧪 Testes
 
 A suíte de testes é composta por **testes de integração reais**: eles sobem o contexto do Spring e se conectam a um PostgreSQL de verdade. Por isso, **o banco precisa estar no ar antes de executar os testes**:

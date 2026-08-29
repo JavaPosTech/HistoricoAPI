@@ -31,7 +31,22 @@ Ela devolve os dados cadastrais do paciente junto com o histórico clínico (`hi
 | Boilerplate | Lombok |
 | Testes | JUnit 5 + AssertJ + JaCoCo |
 
-Não há Spring Security, Flyway nem MapStruct neste projeto. O `SwaggerConfig` **declara** um security scheme `bearerAuth` (JWT) apenas para fins de documentação — não existe nenhum filtro de autenticação no classpath. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
+Não há Spring Security, Flyway nem MapStruct neste projeto. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
+
+**A API não possui autenticação.** Não existe filtro de autenticação no classpath e as requisições são atendidas sem credencial. Por isso o `SwaggerConfig` **não** declara nenhum security scheme: documentar um `bearerAuth` que nada valida faria a Swagger UI pedir um token inócuo e passaria a impressão de que o endpoint é protegido. Enquanto a autenticação não for de fato implementada, a documentação deve continuar dizendo que ela não existe.
+
+### Documentação OpenAPI
+
+Como não existe nenhum `@RestController`, o SpringDoc não encontra handler algum para inspecionar. Por isso o `SwaggerConfig` **declara manualmente** o endpoint `POST /graphql` (`OpenAPI.path(...)`), com `requestBody`, respostas `200`/`400`/`500` e exemplos. Sem isso a Swagger UI sobe com *"No operations defined in spec"*.
+
+Convenções desse arquivo, para mantê-lo coerente ao evoluir a API:
+
+- Os schemas dos DTOs **não** são escritos à mão: `registrarSchema(...)` resolve a classe via `ModelConverters`, então as anotações `@Schema` dos records continuam sendo a fonte de verdade. Ao criar um DTO novo que apareça na resposta, anote-o e registre a classe raiz.
+- Os schemas `GraphQlRequest`, `GraphQlResponse` e `GraphQlError` descrevem o envelope da especificação GraphQL e são montados programaticamente — não existem classes correspondentes, e não devem ser criadas só para isso.
+- O SpringDoc **descarta schemas não referenciados**; registrar uma classe que nada aponta não produz efeito no documento final.
+- Os exemplos JSON ficam em constantes de texto e passam por `json(...)`, que os converte em objetos para a Swagger UI renderizar JSON de verdade em vez de uma string escapada. Um JSON malformado quebra a subida do contexto.
+- A query do exemplo do `requestBody` passa por `queryEmLinhaUnica()`, que colapsa os espaços em branco de `QUERY_HISTORICO_PACIENTE`. JSON não aceita quebra de linha dentro de string: mantida formatada, a query apareceria na Swagger UI cheia de `\n` escapados. A versão indentada fica na descrição da operação, em um bloco ```graphql, onde o Markdown a renderiza corretamente.
+- Ao adicionar uma query ou mutation ao schema GraphQL, atualize a descrição da operação e os exemplos — o documento OpenAPI não acompanha o `.graphqls` automaticamente.
 
 ## Comandos
 
@@ -97,7 +112,7 @@ O padrão adotado é **organizar por camada e, dentro de cada camada, por domín
 src/main/java/br/com/fiap/historicoapi/
 ├── config/
 │   ├── DataBaseConfig.java        # DataSource dos perfis dev e prod
-│   └── SwaggerConfig.java         # OpenAPI + security scheme bearerAuth (documental)
+│   └── SwaggerConfig.java         # OpenAPI — documenta o endpoint POST /graphql
 ├── controller/
 │   └── HistoricoController.java   # @QueryMapping getHistoricoPaciente
 ├── service/
