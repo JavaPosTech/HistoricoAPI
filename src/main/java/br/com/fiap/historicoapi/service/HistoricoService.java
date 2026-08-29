@@ -19,7 +19,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class HistoricoService {
 
     private final PacienteRepository pacienteRepository;
@@ -28,6 +27,7 @@ public class HistoricoService {
 
     private final HistoricoPacienteRepository historicoPacienteRepository;
 
+    @Transactional(readOnly = true)
     public PacienteDTO buscarHistoricoPorPacienteId(Integer pacienteId) {
         log.info("Buscando Histórico do Paciente... - ID: [{}]", pacienteId);
 
@@ -37,7 +37,7 @@ public class HistoricoService {
         var historicoPaciente = buscarHistoricoPaciente(pacienteId);
         var historicoConsultas = buscarHistoricoConsultas(pacienteId);
 
-        log.info("Histórico do Paciente encontrado - ID: [{}] | Históricos: [{}] | Consultas: [{}]",
+        log.info("Histórico do Paciente encontrado! - ID: [{}] | Históricos: [{}] | Consultas: [{}]",
                 pacienteId,
                 historicoPaciente.size(),
                 historicoConsultas.size());
@@ -47,6 +47,7 @@ public class HistoricoService {
 
     private void validarPacienteId(Integer pacienteId) {
         if (pacienteId == null || pacienteId <= 0) {
+            log.error("ID do Paciente inválido: [{}]", pacienteId);
             throw new RequisicaoInvalidaException("O ID do Paciente deve ser um número inteiro positivo!");
         }
     }

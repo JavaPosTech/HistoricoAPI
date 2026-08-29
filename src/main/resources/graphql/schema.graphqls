@@ -29,3 +29,7 @@ type Agendamento {
     observacao: String
     dataCadastro: String!
 }
+
+extend type Query {
+    getHistoricoPaciente(pacienteId: ID!): Paciente
+}

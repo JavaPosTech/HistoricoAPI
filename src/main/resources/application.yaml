@@ -9,6 +9,11 @@ spring:
   application:
     name: historicoapi
 
+  # http://localhost:9017/HistoricoAPI/graphiql
+  graphql:
+    graphiql:
+      enabled: true
+
   jackson:
     deserialization:
       fail-on-unknown-properties: true
