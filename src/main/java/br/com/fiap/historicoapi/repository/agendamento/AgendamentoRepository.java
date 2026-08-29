@@ -10,7 +10,7 @@ import java.util.List;
 @Repository
 public interface AgendamentoRepository extends JpaRepository<Agendamento, Integer> {
 
-    @EntityGraph(attributePaths = {"paciente", "medico"})
+    @EntityGraph(attributePaths = {"medico"})
     List<Agendamento> findByPacienteId(Integer pacienteId);
 
 }

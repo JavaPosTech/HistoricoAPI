@@ -3,15 +3,11 @@ package br.com.fiap.historicoapi.model.dto.paciente;
 import br.com.fiap.historicoapi.model.dto.agendamento.AgendamentoDTO;
 import br.com.fiap.historicoapi.model.dto.historicopaciente.HistoricoPacienteDTO;
 import br.com.fiap.historicoapi.model.entity.paciente.Paciente;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import br.com.fiap.historicoapi.util.FormatadorData;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
-@SchemaMapping("Paciente")
 @Schema(description = "Representa o modelo de dados de um Paciente.")
 public record PacienteDTO(
 
@@ -29,11 +25,9 @@ public record PacienteDTO(
 
         String endereco,
 
-        @JsonFormat(pattern = "dd/MM/yyyy")
-        LocalDate dataNascimento,
+        String dataNascimento,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        LocalDateTime dataCadastro,
+        String dataCadastro,
 
         String situacaoCadastro,
 
@@ -42,8 +36,15 @@ public record PacienteDTO(
         List<AgendamentoDTO> consultas
 
 ) {
-    public PacienteDTO(Paciente paciente, List<HistoricoPacienteDTO> historico, List<AgendamentoDTO> consultas) {
-        this(
+    public PacienteDTO {
+        historico = historico == null ? List.of() : List.copyOf(historico);
+        consultas = consultas == null ? List.of() : List.copyOf(consultas);
+    }
+
+    public static PacienteDTO from(Paciente paciente,
+                                   List<HistoricoPacienteDTO> historico,
+                                   List<AgendamentoDTO> consultas) {
+        return new PacienteDTO(
                 paciente.getId(),
                 paciente.getNome(),
                 paciente.getSobrenome(),
@@ -51,8 +52,8 @@ public record PacienteDTO(
                 paciente.getEmail(),
                 paciente.getTelefone(),
                 paciente.getEndereco(),
-                paciente.getDataNascimento(),
-                paciente.getDataCadastro(),
+                FormatadorData.formatar(paciente.getDataNascimento()),
+                FormatadorData.formatar(paciente.getDataCadastro()),
                 paciente.getSituacaoCadastro().getDescricao(),
                 historico,
                 consultas

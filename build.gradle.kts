@@ -79,7 +79,7 @@ tasks.named<JacocoReport>("jacocoTestReport") {
 						"**/enums/**",
 						"**/exceptions/**",
 						"**/model/**",
-						"**/AgendamentoAPIApplication.class"
+						"**/HistoricoAPIApplication.class"
 					)
 				}
 			}

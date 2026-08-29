@@ -2,9 +2,7 @@ package br.com.fiap.historicoapi.model.dto.historicopaciente;
 
 import br.com.fiap.historicoapi.model.entity.historicopaciente.HistoricoPaciente;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
 
-@SchemaMapping("HistoricoPaciente")
 @Schema(description = "Representa o modelo de dados de um Histórico de Paciente.")
 public record HistoricoPacienteDTO(
 
@@ -18,11 +16,11 @@ public record HistoricoPacienteDTO(
 
         String alergias,
 
-        String observacao
+        String observacoes
 
 ) {
-    public HistoricoPacienteDTO(HistoricoPaciente historicoPaciente) {
-        this(
+    public static HistoricoPacienteDTO from(HistoricoPaciente historicoPaciente) {
+        return new HistoricoPacienteDTO(
                 historicoPaciente.getId(),
                 historicoPaciente.getQueixaPrincipal(),
                 historicoPaciente.getHistoricoDoenca(),

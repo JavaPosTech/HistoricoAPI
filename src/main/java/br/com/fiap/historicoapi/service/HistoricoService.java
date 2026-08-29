@@ -1,5 +1,7 @@
 package br.com.fiap.historicoapi.service;
 
+import br.com.fiap.historicoapi.exceptions.PacienteNaoEncontradoException;
+import br.com.fiap.historicoapi.exceptions.RequisicaoInvalidaException;
 import br.com.fiap.historicoapi.model.dto.agendamento.AgendamentoDTO;
 import br.com.fiap.historicoapi.model.dto.historicopaciente.HistoricoPacienteDTO;
 import br.com.fiap.historicoapi.model.dto.paciente.PacienteDTO;
@@ -17,6 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class HistoricoService {
 
     private final PacienteRepository pacienteRepository;
@@ -25,34 +28,43 @@ public class HistoricoService {
 
     private final HistoricoPacienteRepository historicoPacienteRepository;
 
-    @Transactional(readOnly = true)
-    public PacienteDTO getHistoricoById(Integer pacienteId) {
+    public PacienteDTO buscarHistoricoPorPacienteId(Integer pacienteId) {
         log.info("Buscando Histórico do Paciente... - ID: [{}]", pacienteId);
 
-        var paciente = getPacienteById(pacienteId);
-        var historicoPaciente = getHistoricoPacienteById(pacienteId);
-        var historicoConsultas = getHistoricoConsultasById(pacienteId);
+        validarPacienteId(pacienteId);
 
-        return new PacienteDTO(paciente, historicoPaciente, historicoConsultas);
+        var paciente = buscarPaciente(pacienteId);
+        var historicoPaciente = buscarHistoricoPaciente(pacienteId);
+        var historicoConsultas = buscarHistoricoConsultas(pacienteId);
+
+        log.info("Histórico do Paciente encontrado - ID: [{}] | Históricos: [{}] | Consultas: [{}]",
+                pacienteId,
+                historicoPaciente.size(),
+                historicoConsultas.size());
+
+        return PacienteDTO.from(paciente, historicoPaciente, historicoConsultas);
     }
 
-    private Paciente getPacienteById(Integer pacienteId) {
-        return pacienteRepository.findById(pacienteId).orElseThrow(() -> new RuntimeException("Paciente não encontrado - ID: " + pacienteId));
+    private void validarPacienteId(Integer pacienteId) {
+        if (pacienteId == null || pacienteId <= 0) {
+            throw new RequisicaoInvalidaException("O ID do Paciente deve ser um número inteiro positivo!");
+        }
     }
 
-    private List<HistoricoPacienteDTO> getHistoricoPacienteById(Integer pacienteId) {
-        var historicoPaciente = historicoPacienteRepository.findByPacienteId(pacienteId);
-        return historicoPaciente.stream()
-                .map(HistoricoPacienteDTO::new)
+    private Paciente buscarPaciente(Integer pacienteId) {
+        return pacienteRepository.findById(pacienteId)
+                .orElseThrow(() -> new PacienteNaoEncontradoException(pacienteId));
+    }
+
+    private List<HistoricoPacienteDTO> buscarHistoricoPaciente(Integer pacienteId) {
+        return historicoPacienteRepository.findByPacienteId(pacienteId).stream()
+                .map(HistoricoPacienteDTO::from)
                 .toList();
     }
 
-    private List<AgendamentoDTO> getHistoricoConsultasById(Integer pacienteId) {
-        log.info("Buscando Histórico de Consultas... - Paciente: [ID: {}]", pacienteId);
-
-        var agendamentos = agendamentoRepository.findByPacienteId(pacienteId);
-        return agendamentos.stream()
-                .map(AgendamentoDTO::new)
+    private List<AgendamentoDTO> buscarHistoricoConsultas(Integer pacienteId) {
+        return agendamentoRepository.findByPacienteId(pacienteId).stream()
+                .map(AgendamentoDTO::from)
                 .toList();
     }
 }

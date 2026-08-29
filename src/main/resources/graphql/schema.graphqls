@@ -19,7 +19,7 @@ type HistoricoPaciente {
     historicoDoenca: String!
     medicamentos: String!
     alergias: String!
-    observacao: String
+    observacoes: String
 }
 
 type Agendamento {
@@ -28,8 +28,4 @@ type Agendamento {
     dataHoraConsulta: String!
     observacao: String
     dataCadastro: String!
-}
-
-extend type Query {
-    getHistoricoPaciente(pacienteId: ID!): Paciente
 }

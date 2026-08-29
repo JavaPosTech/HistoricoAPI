@@ -1,13 +1,9 @@
 package br.com.fiap.historicoapi.model.dto.agendamento;
 
 import br.com.fiap.historicoapi.model.entity.agendamento.Agendamento;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import br.com.fiap.historicoapi.util.FormatadorData;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
 
-import java.time.LocalDateTime;
-
-@SchemaMapping("Agendamento")
 @Schema(description = "Representa o modelo de dados de uma Consulta.")
 public record AgendamentoDTO(
 
@@ -15,21 +11,20 @@ public record AgendamentoDTO(
 
         String nomeMedico,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        LocalDateTime dataHoraConsulta,
+        String dataHoraConsulta,
 
         String observacao,
 
-        @JsonFormat(pattern = "dd/MM/yyyy - HH:mm:ss")
-        LocalDateTime dataCadastro
+        String dataCadastro
 
 ) {
-    public AgendamentoDTO(Agendamento agendamento) {
-        this(agendamento.getId(),
+    public static AgendamentoDTO from(Agendamento agendamento) {
+        return new AgendamentoDTO(
+                agendamento.getId(),
                 agendamento.getMedico().getNome(),
-                agendamento.getDataHoraConsulta(),
+                FormatadorData.formatar(agendamento.getDataHoraConsulta()),
                 agendamento.getObservacao(),
-                agendamento.getDataCadastro()
+                FormatadorData.formatar(agendamento.getDataCadastro())
         );
     }
 }
