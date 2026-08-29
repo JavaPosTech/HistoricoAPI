@@ -1,0 +1,49 @@
+# PostgreSQL para desenvolvimento local, com credenciais fixas e sem depender
+# do arquivo .env. E o banco usado no dia a dia e pela suite de testes.
+#
+#   docker compose -f docker-compose-postgres-dev.yml up -d --wait
+#
+# As credenciais aqui sao as mesmas assumidas por padrao pelo TestDataBaseConfig
+# de cada projeto (postgres / fiap@2026). Ao alterar uma, altere a outra.
+#
+# Assim como o compose de producao, cria a rede `shared-net`, permitindo subir
+# containers de servico apontados para este banco.
+
+name: fiap-fase3-dev
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres-fase3
+
+    environment:
+      TZ: America/Sao_Paulo
+
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fiap@2026
+
+    ports:
+      - "8745:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: always
+
+    networks:
+      - shared-net
+
+volumes:
+  postgres-data:
+    name: fiap-postgres-data-dev
+
+networks:
+  shared-net:
+    name: shared-net

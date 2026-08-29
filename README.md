@@ -8,11 +8,17 @@
   Turma 12ADJT – Projeto desenvolvido na pós-graduação em Arquitetura e Desenvolvimento em Java da FIAP. O objetivo é desenvolver uma API responsável pelo gerenciamento do histórico de consultas, com armazenamento dos dados e disponibilização das informações por meio de uma interface GraphQL.
 </div> 
 
+<br>
+
+<div align="center">
+  <img alt="Java 21" src="https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white" />
+  <img alt="Spring Boot 4.0.5" src="https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F?style=flat-square&logo=springboot&logoColor=white" />
+  <img alt="PostgreSQL 18" src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="Cobertura de linhas 100%" src="https://img.shields.io/badge/cobertura%20de%20linhas-100%25-brightgreen?style=flat-square" />
+  <img alt="Cobertura de branches 87%" src="https://img.shields.io/badge/cobertura%20de%20branches-87%25-green?style=flat-square" />
+</div>
+
  <br> <br> 
-
-> 🚧 **Status:** projeto em fase inicial. A estrutura de build, os perfis de execução, o logging e os arquivos de Docker já estão configurados. As entidades, os resolvers GraphQL e a suíte de testes ainda serão implementados.
-
-<br> 
 
 ## 🧰 Ferramentas Utilizadas
 
@@ -34,6 +40,8 @@
 
 * 🐳 Docker / Docker Compose
 
+* 🔄 GitHub Actions (CI)
+
 * 📑 SpringDoc OpenAPI (Swagger UI)
 
 * 🗄️ Spring Data JPA + Bean Validation
@@ -46,17 +54,15 @@ O código é organizado **por camada e, dentro de cada camada, por domínio**:
 
 ```
 src/main/java/br/com/fiap/historicoapi/
-├── config/           # Configurações (banco de dados, Swagger, GraphQL)
-├── controller/       # Resolvers GraphQL e endpoints REST
-├── service/          # Regras de negócio
-├── repository/       # Interfaces JpaRepository
+├── config/           # DataBaseConfig (perfis dev e prod) e SwaggerConfig
+├── controller/       # HistoricoController — resolver GraphQL
+├── service/          # HistoricoService — regras de negócio
+├── repository/       # Interfaces JpaRepository (paciente, agendamento, histórico)
 ├── model/
 │   ├── entity/       # Entidades JPA
-│   ├── dto/          # Modelos de saída
-│   ├── request/      # Modelos de entrada
-│   └── response/     # Envelopes de resposta
-├── exceptions/       # Exceções de negócio e GlobalExceptionHandler
-└── enums/
+│   └── dto/          # Modelos de saída (records)
+├── exceptions/       # Exceções de negócio, DTOs de erro e GlobalExceptionHandler
+└── util/             # FormatadorData — formatação de datas
 
 src/main/resources/
 ├── application.yaml  # Perfis dev, prod e test
@@ -104,30 +110,65 @@ Caso prefira o terminal, os mesmos comandos estão disponíveis via Gradle Wrapp
 
 <br> 
 
+## 🐳 Banco Compartilhado e Docker Compose
+
+Os microsserviços da Fase 3 compartilham **um único PostgreSQL**. O banco sobe de forma independente, cria a rede `shared-net`, e cada serviço se conecta a ela como rede externa:
+
+```
+                       ┌──────────────────────┐
+                       │   rede: shared-net   │
+                       │                      │
+   host:8745  ────────▶│  postgres:5432       │◀──── AgendamentoAPI  (host:9027)
+                       │                      │◀──── HistoricoAPI    (host:9028)
+                       └──────────────────────┘
+```
+
+Dentro da rede, o banco é sempre alcançado pelo hostname **`postgres`** na porta interna **`5432`**. A porta `8745` é apenas a exposição no host, para acesso via IDE ou cliente SQL.
+
+O projeto disponibiliza três arquivos Compose:
+
+| Arquivo | Finalidade |
+| --- | --- |
+| `docker-compose-postgres-dev.yml` | PostgreSQL de desenvolvimento, com credenciais fixas e sem dependência do `.env`. |
+| `docker-compose-postgres-prod.yml` | PostgreSQL de produção: lê o `.env`, possui *healthcheck* e cria a rede `shared-net`. |
+| `docker-compose-historicoapi.yml` | Apenas a API, no perfil `prod`, conectando-se à `shared-net` já existente. |
+
+> ℹ️ Os dois arquivos do PostgreSQL são **idênticos aos da AgendamentoAPI** e usam nome de projeto e de volume fixos. Isso significa que tanto faz de qual projeto o banco é iniciado: o container e os dados serão sempre os mesmos. Suba o banco **uma vez**, a partir de qualquer um dos repositórios.
+
+> ⚠️ **O schema é criado pelas migrations Flyway da AgendamentoAPI.** Esta API apenas lê os dados e não possui Flyway nem `ddl-auto`. Portanto, a AgendamentoAPI precisa ter sido iniciada ao menos uma vez contra o banco antes que a HistoricoAPI (ou a suíte de testes) funcione.
+
+<br> 
+
 ## 🛠️ Desenvolvimento 
 
-Para o ambiente de desenvolvimento, o projeto disponibiliza o arquivo `docker-compose-postgres.yml`, já configurado com todas as variáveis necessárias para conexão com o banco de dados. 
+Para o ambiente de desenvolvimento, o projeto disponibiliza o arquivo `docker-compose-postgres-dev.yml`, já configurado com todas as credenciais necessárias para conexão com o banco de dados, sem exigir nenhuma configuração adicional.
 
 Para iniciar o serviço do PostgreSQL, execute no terminal: 
 
 ```bash
-docker compose -f docker-compose-postgres.yml up -d
+docker compose -f docker-compose-postgres-dev.yml up -d --wait
 ```
 
-Em seguida, execute a aplicação utilizando a opção `BootRun - DEV`. Dessa forma, a API será conectada automaticamente ao banco de dados configurado no Docker Compose, facilitando a execução do projeto em ambiente local e ficando disponível na porta `9017`.
+Como esta API **não cria o schema**, é necessário iniciar a AgendamentoAPI ao menos uma vez para que suas migrations Flyway criem as tabelas e a carga inicial de dados:
+
+```bash
+cd ../AgendamentoAPI
+./gradlew bootRun --args="--spring.profiles.active=dev"
+```
+
+Feito isso, execute a HistoricoAPI utilizando a opção `BootRun - DEV`. A API será conectada automaticamente ao banco de dados configurado no Docker Compose e ficará disponível na porta `9017`.
 
 > ℹ️ A conexão com o banco é montada a partir das variáveis `DATABASE_IP`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER` e `DATABASE_PASSWORD`. As configurações de execução do IntelliJ (`.run/`) já definem esses valores; ao rodar pelo terminal, exporte-os antes de iniciar a aplicação.
+
+> ℹ️ Ao rodar localmente pela IDE, a aplicação acessa o banco em `localhost:8745`. O valor `5432` só é utilizado pelos containers, que enxergam o PostgreSQL pela rede interna do Docker.
 
 <br> 
 
 ## 🚀 Produção
 
-Para execução em ambiente de produção, o projeto disponibiliza o arquivo `docker-compose-historicoapi.yml`. Antes de iniciar a aplicação, é necessário configurar o arquivo `.env` com as variáveis de conexão do banco de dados, conforme o ambiente desejado:
+Para execução em ambiente de produção, o projeto disponibiliza os arquivos `docker-compose-postgres-prod.yml` e `docker-compose-historicoapi.yml`. Antes de iniciar a aplicação, é necessário configurar o arquivo `.env` na raiz do projeto:
 
 ```bash
-# DATABASE_PORT
-$ Exemplo: 5432
-
 # DATABASE_NAME
 $ Exemplo: postgres
 
@@ -138,35 +179,25 @@ $ Exemplo: postgres
 $ Exemplo: postgres@2026
 ```
 
-> ℹ️ Importante: a variável `DATABASE_PORT` representa a porta utilizada pela aplicação para se conectar ao banco de dados dentro da rede interna do Docker.
-O valor padrão é `5432`. Caso deseje alterar essa porta no arquivo  `.env`, também será necessário ajustar o arquivo `docker-compose-historicoapi.yml`, atualizando a porta interna do container PostgreSQL para o mesmo valor configurado.
+As mesmas variáveis são utilizadas para **criar** o container do PostgreSQL e para a API se **conectar** a ele, de modo que as credenciais não têm como divergir. Se `DATABASE_PASSWORD` não estiver preenchida, o Compose interrompe a execução com uma mensagem explícita, em vez de subir um banco com senha em branco.
 
-```yaml
-ports:
-  - "8745:5432"
-```
-
-Se alterar `DATABASE_PORT` para `5433`, o mapeamento deverá ser ajustado para:
-
-```yaml
-ports:
-  - "8745:5433"
-```
-
-Nesse exemplo:
-
-* `8745` = porta externa utilizada pelo host para acessar o banco
-* `5432` ou `5433` = porta interna utilizada pela API para se conectar ao PostgreSQL
+> ℹ️ Não é necessário configurar a porta do banco: dentro da rede `shared-net` a conexão é sempre feita em `postgres:5432`, valor já fixado nos arquivos Compose.
 
 <br> 
 
-Após configurar o arquivo `.env` com as variáveis de conexão do banco de dados, execute no terminal:
+Após configurar o arquivo `.env`, inicie primeiro o banco de dados e, em seguida, a API:
 
 ```bash
+# 1. PostgreSQL — também cria a rede shared-net (execute apenas uma vez)
+docker compose -f docker-compose-postgres-prod.yml up -d --wait
+
+# 2. HistoricoAPI
 docker compose -f docker-compose-historicoapi.yml up -d
 ```
 
-Dessa forma, a API será iniciada utilizando as variáveis definidas no arquivo `.env` e ficará disponível na porta `9027`.
+Dessa forma, a API será iniciada utilizando as variáveis definidas no arquivo `.env` e ficará disponível na porta `9028` do host.
+
+> ⚠️ A aplicação escuta na porta `9027` dentro do container, mas é publicada em `9028` no host, pois a AgendamentoAPI também utiliza a `9027`. Ao acessar a API pelo navegador, utilize `http://localhost:9028`; para chamadas entre containers, utilize `http://HistoricoAPI:9027`.
 
 > ℹ️ Quando a API é executada em produção, é criada automaticamente uma pasta chamada `logs` no diretório onde a aplicação está sendo executada. Essa pasta é responsável por armazenar todos os logs gerados pela API, sendo organizados de forma diária, ou seja, a cada novo dia é gerado um arquivo específico contendo a data correspondente, facilitando a rastreabilidade e análise das execuções. Além disso, a aplicação possui uma política de limpeza automática, na qual os arquivos de `logs` são mantidos por um período de 30 dias. Após esse prazo, os `logs` mais antigos são excluídos automaticamente, garantindo melhor gerenciamento de armazenamento.
 
@@ -180,19 +211,70 @@ Todas as rotas da aplicação são relativas ao context path **`/HistoricoAPI`**
 # Perfil DEV
 $ POST http://localhost:9017/HistoricoAPI/graphql
 
-# Perfil PROD
-$ POST http://localhost:9027/HistoricoAPI/graphql
+# Perfil PROD (container publicado na porta 9028 do host)
+$ POST http://localhost:9028/HistoricoAPI/graphql
 ```
 
 Os schemas ficam em `src/main/resources/graphql/` e são carregados automaticamente pelo Spring for GraphQL.
 
-> ℹ️ A interface interativa **GraphiQL** vem desabilitada por padrão. Para utilizá-la durante o desenvolvimento, adicione ao bloco do perfil `dev` em `application.yaml`:
+<br> 
 
-```yaml
-spring:
-  graphql:
-    graphiql:
-      enabled: true
+### 🔎 Consulta disponível
+
+A API expõe a query `getHistoricoPaciente`, que retorna os dados cadastrais do paciente junto com o histórico clínico e as consultas agendadas:
+
+```graphql
+query BuscarHistoricoPaciente($pacienteId: ID!) {
+    getHistoricoPaciente(pacienteId: $pacienteId) {
+        id
+        nome
+        sobrenome
+        cpf
+        email
+        telefone
+        endereco
+        dataNascimento
+        dataCadastro
+        situacaoCadastro
+        historico {
+            id
+            queixaPrincipal
+            historicoDoenca
+            medicamentos
+            alergias
+            observacoes
+        }
+        consultas {
+            id
+            nomeMedico
+            dataHoraConsulta
+            observacao
+            dataCadastro
+        }
+    }
+}
+```
+
+Com as variáveis:
+
+```json
+{ "pacienteId": 1 }
+```
+
+> ℹ️ As datas são retornadas já formatadas, no padrão `dd/MM/yyyy` e `dd/MM/yyyy - HH:mm:ss`.
+
+<br> 
+
+### 🖥️ GraphiQL
+
+A interface interativa **GraphiQL** está habilitada e pode ser utilizada diretamente no navegador:
+
+```bash
+# Perfil DEV
+$ http://localhost:9017/HistoricoAPI/graphiql
+
+# Perfil PROD (container publicado na porta 9028 do host)
+$ http://localhost:9028/HistoricoAPI/graphiql
 ```
 
 > ℹ️ As listagens paginadas utilizam numeração iniciada em **1**, e não em 0.
@@ -216,7 +298,7 @@ Caso inicie a aplicação utilizando a opção `BootRun - PROD` e acesse o link 
 
 ```bash
 # URL para acessar a documentação da API 
-$ http://localhost:9027/HistoricoAPI/swagger-ui/index.html
+$ http://localhost:9028/HistoricoAPI/swagger-ui/index.html
 ```
 
 <br> 
@@ -226,19 +308,47 @@ $ http://localhost:9027/HistoricoAPI/swagger-ui/index.html
 A suíte de testes é composta por **testes de integração reais**: eles sobem o contexto do Spring e se conectam a um PostgreSQL de verdade. Por isso, **o banco precisa estar no ar antes de executar os testes**:
 
 ```bash
-docker compose -f docker-compose-postgres.yml up -d
+docker compose -f docker-compose-postgres-dev.yml up -d
 ./gradlew test
 ```
 
 Os testes utilizam o perfil `test` e devem ser executados a partir da raiz do projeto.
 
-Ao final da execução, o **JaCoCo** gera o relatório de cobertura em:
+<br> 
+
+### 📊 Cobertura
+
+A suíte conta atualmente com **14 testes distribuídos em 6 classes**, cobrindo o resolver GraphQL, a camada de serviço, os três repositórios e o utilitário de formatação de datas.
+
+| Métrica | Cobertura |
+| --- | --- |
+| 📌 Instruções | **100%** |
+| 📏 Linhas | **100%** |
+| 🔧 Métodos | **100%** |
+| 📦 Classes | **100%** |
+| 🔀 Branches | **87%** |
+
+Ao final da execução, o **JaCoCo** gera o relatório completo em:
 
 ```bash
 build/reports/jacoco/test/html/index.html
 ```
 
-> ℹ️ Os pacotes `config`, `enums`, `exceptions` e `model`, além da classe `HistoricoAPIApplication`, são intencionalmente excluídos do cálculo de cobertura.
+> ℹ️ Os pacotes `config`, `enums`, `exceptions` e `model`, além da classe `HistoricoAPIApplication`, são intencionalmente excluídos do cálculo de cobertura, por serem estruturais e não conterem regra de negócio.
+
+<br> 
+
+## 🔄 Integração Contínua
+
+O workflow `.github/workflows/workflow.yml` é executado a cada **Pull Request** direcionado à branch `main`. Ele provisiona um container PostgreSQL 18 como serviço, configura o Java 21 (Temurin) e executa o build completo:
+
+```bash
+./gradlew build --no-daemon --info
+```
+
+Como o `build` também roda a suíte de testes, o Pull Request só fica verde se todos os testes passarem.
+
+> ℹ️ A senha do banco utilizado pelo workflow vem do *secret* `POSTGRES_PASSWORD`, configurado nas *Settings* do repositório.
 
 <br> 
 
