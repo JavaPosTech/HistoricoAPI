@@ -31,7 +31,22 @@ Ela devolve os dados cadastrais do paciente junto com o histórico clínico (`hi
 | Boilerplate | Lombok |
 | Testes | JUnit 5 + AssertJ + JaCoCo |
 
-Não há Spring Security, Flyway nem MapStruct neste projeto. O `SwaggerConfig` **declara** um security scheme `bearerAuth` (JWT) apenas para fins de documentação — não existe nenhum filtro de autenticação no classpath. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
+Não há Spring Security nem MapStruct neste projeto. O Flyway existe **apenas no classpath de teste** (ver "Testes e Cobertura"); no runtime de dev e prod ele não está presente. Se alguma dessas dependências for necessária, adicione-a explicitamente ao `build.gradle.kts`.
+
+**A API não possui autenticação.** Não existe filtro de autenticação no classpath e as requisições são atendidas sem credencial. Por isso o `SwaggerConfig` **não** declara nenhum security scheme: documentar um `bearerAuth` que nada valida faria a Swagger UI pedir um token inócuo e passaria a impressão de que o endpoint é protegido. Enquanto a autenticação não for de fato implementada, a documentação deve continuar dizendo que ela não existe.
+
+### Documentação OpenAPI
+
+Como não existe nenhum `@RestController`, o SpringDoc não encontra handler algum para inspecionar. Por isso o `SwaggerConfig` **declara manualmente** o endpoint `POST /graphql` (`OpenAPI.path(...)`), com `requestBody`, respostas `200`/`400`/`500` e exemplos. Sem isso a Swagger UI sobe com *"No operations defined in spec"*.
+
+Convenções desse arquivo, para mantê-lo coerente ao evoluir a API:
+
+- Os schemas dos DTOs **não** são escritos à mão: `registrarSchema(...)` resolve a classe via `ModelConverters`, então as anotações `@Schema` dos records continuam sendo a fonte de verdade. Ao criar um DTO novo que apareça na resposta, anote-o e registre a classe raiz.
+- Os schemas `GraphQlRequest`, `GraphQlResponse` e `GraphQlError` descrevem o envelope da especificação GraphQL e são montados programaticamente — não existem classes correspondentes, e não devem ser criadas só para isso.
+- O SpringDoc **descarta schemas não referenciados**; registrar uma classe que nada aponta não produz efeito no documento final.
+- Os exemplos JSON ficam em constantes de texto e passam por `json(...)`, que os converte em objetos para a Swagger UI renderizar JSON de verdade em vez de uma string escapada. Um JSON malformado quebra a subida do contexto.
+- A query do exemplo do `requestBody` passa por `queryEmLinhaUnica()`, que colapsa os espaços em branco de `QUERY_HISTORICO_PACIENTE`. JSON não aceita quebra de linha dentro de string: mantida formatada, a query apareceria na Swagger UI cheia de `\n` escapados. A versão indentada fica na descrição da operação, em um bloco ```graphql, onde o Markdown a renderiza corretamente.
+- Ao adicionar uma query ou mutation ao schema GraphQL, atualize a descrição da operação e os exemplos — o documento OpenAPI não acompanha o `.graphqls` automaticamente.
 
 ## Comandos
 
@@ -87,7 +102,9 @@ A conexão é montada em `config/DataBaseConfig` a partir das variáveis de ambi
 
 `DataBaseConfig` é anotado com `@Profile({"dev", "prod"})`; nos testes quem fornece o `DataSource` é `config/TestDataBaseConfig` (em `src/test`), que tem valores default (`localhost:8745`, usuário `postgres`, senha `fiap@2026`) alinhados com `docker-compose-postgres-dev.yml` — por isso a suíte roda localmente sem exportar variável nenhuma. Se você alterar a senha em um dos dois arquivos, altere no outro também.
 
-> **Estratégia de schema:** não há `ddl-auto` configurado nem ferramenta de migração no classpath — o Hibernate não cria nem altera nada. As tabelas (`paciente`, `medico`, `usuario`, `agendamento`, `historico_paciente`, `situacao_cadastro`, `tipo_usuario`, todas no schema `public`) são criadas pelas **migrations Flyway da AgendamentoAPI**, que também insere a carga inicial de dados — incluindo o paciente de `id = 1` do qual a suíte de testes depende. As entidades daqui apenas mapeiam esse schema e são usadas somente para leitura. Ver "Docker" para o fluxo de inicialização.
+> **Estratégia de schema:** não há `ddl-auto` configurado e o Hibernate não cria nem altera nada. Em **dev e prod** as tabelas (`paciente`, `medico`, `usuario`, `agendamento`, `historico_paciente`, `situacao_cadastro`, `tipo_usuario`, todas no schema `public`) são criadas pelas **migrations Flyway da AgendamentoAPI**, que também insere a carga inicial de dados. As entidades daqui apenas mapeiam esse schema e são usadas somente para leitura. Ver "Docker" para o fluxo de inicialização.
+
+> **No perfil `test` o schema é criado aqui.** O Flyway está no projeto **apenas no classpath de teste** (`testImplementation`), e as migrations da AgendamentoAPI estão copiadas em `src/test/resources/db/migration/`. Assim a suíte cria o próprio schema e a própria carga de dados, sem depender de a AgendamentoAPI ter subido antes. Detalhes em "Testes e Cobertura".
 
 ## Estrutura Atual
 
@@ -97,7 +114,7 @@ O padrão adotado é **organizar por camada e, dentro de cada camada, por domín
 src/main/java/br/com/fiap/historicoapi/
 ├── config/
 │   ├── DataBaseConfig.java        # DataSource dos perfis dev e prod
-│   └── SwaggerConfig.java         # OpenAPI + security scheme bearerAuth (documental)
+│   └── SwaggerConfig.java         # OpenAPI — documenta o endpoint POST /graphql
 ├── controller/
 │   └── HistoricoController.java   # @QueryMapping getHistoricoPaciente
 ├── service/
@@ -124,6 +141,11 @@ src/main/resources/
 └── graphql/
     ├── query.graphqls             # type Query base
     └── schema.graphqls            # Tipos do domínio + extend type Query
+
+src/test/resources/
+└── db/migration/                  # Migrations do perfil test (cópia das da AgendamentoAPI)
+    ├── V1.0__CreateTables.sql
+    └── V1.1__Inserts.sql
 ```
 
 Ainda **não existem** os pacotes `model/request/`, `model/response/` e `enums/` — a API é somente de leitura e não recebe payloads. Crie-os apenas se surgir uma mutation.
@@ -158,7 +180,20 @@ Log4j2 é a única implementação no classpath: `logback-classic` e `spring-boo
 
 ## Testes e Cobertura
 
-A suíte são **testes de integração reais**: sobem o contexto do Spring contra um PostgreSQL de verdade, e não com banco em memória. O banco precisa estar no ar antes de rodar a suíte, e os testes dependem de **dados pré-existentes** — em especial o paciente de `id = 1`.
+A suíte são **testes de integração reais**: sobem o contexto do Spring contra um PostgreSQL de verdade, e não com banco em memória. O banco precisa estar no ar antes de rodar a suíte, mas pode estar **vazio** — o schema e a carga de dados vêm do Flyway.
+
+### Flyway restrito ao perfil `test`
+
+O Flyway entra pelo `build.gradle.kts` como `testImplementation` (`spring-boot-starter-flyway` + `flyway-database-postgresql`), portanto **não existe no classpath de runtime** — o fat jar do Boot não contém nenhuma classe do Flyway e dev/prod não têm como migrar nada, ainda que alguém ligue a propriedade. Além disso o `application.yaml` traz `spring.flyway.enabled: false` no documento raiz e `true` apenas no documento do perfil `test`, deixando a intenção explícita.
+
+As migrations em `src/test/resources/db/migration/` (`V1.0__CreateTables.sql` e `V1.1__Inserts.sql`) são **cópias byte a byte** das da AgendamentoAPI (`src/main/resources/db/migration/`). Isso não é acidente e precisa continuar assim: o banco de desenvolvimento é compartilhado entre os serviços, então a suíte pode encontrar um `flyway_schema_history` que a AgendamentoAPI já criou. Como o checksum do Flyway é calculado sobre o conteúdo do arquivo, qualquer divergência faria a validação falhar. **Ao alterar uma migration na AgendamentoAPI, recopie o arquivo para cá sem editar nada.**
+
+Os dois cenários reais funcionam sem configuração extra:
+
+- **Banco vazio** (CI, ou um container novo): o Flyway aplica as duas migrations e cria a carga inicial, incluindo o paciente de `id = 1`.
+- **Banco já migrado pela AgendamentoAPI**: o histórico e os checksums batem, o Flyway não faz nada e a suíte roda sobre os dados existentes.
+
+`baseline-on-migrate` foi deixado **desligado** de propósito. Com ele ligado, um banco que tivesse as tabelas mas não o `flyway_schema_history` seria baselineado na versão 1 e o Flyway tentaria aplicar a `V1.1`, estourando violação de chave única nos `INSERT`. Desligado, esse caso falha com a mensagem clara *"Found non-empty schema without schema history table"*, que diz o que realmente está errado.
 
 Classes base em `src/test/java/br/com/fiap/historicoapi/config/`:
 
@@ -208,15 +243,15 @@ Como os serviços entram numa rede externa, **o banco precisa subir antes** — 
 
 **Portas dos serviços.** Todas as APIs da fase escutam em `9027` no perfil `prod` dentro do próprio container, então elas se diferenciam pela porta publicada no host: AgendamentoAPI em `9027`, HistoricoAPI em `9028`. Ao adicionar um novo serviço à fase, escolha a próxima porta livre no host e mantenha `9027` do lado do container. Chamadas entre containers usam o nome do container e a porta interna (ex.: `http://HistoricoAPI:9027`).
 
-**Origem do schema.** As migrations Flyway vivem na **AgendamentoAPI** (`src/main/resources/db/migration/`), que cria todas as tabelas da fase — inclusive `paciente`, `historico_paciente` e `agendamento`, lidas por esta API — e insere a carga inicial. Este projeto não tem Flyway nem `ddl-auto`: para ter um banco utilizável (localmente ou em produção), a AgendamentoAPI precisa ter subido ao menos uma vez contra ele. Se uma tabela lida aqui precisar mudar, a migration é escrita **lá**.
+**Origem do schema.** As migrations Flyway vivem na **AgendamentoAPI** (`src/main/resources/db/migration/`), que cria todas as tabelas da fase — inclusive `paciente`, `historico_paciente` e `agendamento`, lidas por esta API — e insere a carga inicial. Este projeto não tem `ddl-auto` e o Flyway só está no classpath de teste: para ter um banco utilizável em **dev ou produção**, a AgendamentoAPI precisa ter subido ao menos uma vez contra ele. Se uma tabela lida aqui precisar mudar, a migration é escrita **lá** — e a cópia em `src/test/resources/db/migration/` precisa ser atualizada junto.
 
 ## Integração Contínua
 
 `.github/workflows/workflow.yml` roda a cada **Pull Request para `main`**: sobe um service container `postgres:18` em `8745:5432`, configura Java 21 (Temurin) e executa `./gradlew build --no-daemon --info`. Como `build` depende de `test`, **a suíte de integração roda na CI** — qualquer alteração que quebre os testes reprova o PR.
 
-Duas consequências a ter em mente ao mexer nos testes:
+Dois pontos a ter em mente ao mexer nos testes:
 
-- O service container da CI sobe **vazio**, sem o schema e sem os dados que a suíte espera (o paciente de `id = 1`). Qualquer teste que dependa de dados pré-existentes precisa criar seu próprio cenário, ou o workflow precisa de um passo que carregue o schema antes do build.
+- O service container da CI sobe **vazio**, e é o Flyway do perfil `test` que cria o schema e a carga de dados durante o build. Não é preciso nenhum passo extra no workflow — mas um teste que dependa de dados novos precisa que eles estejam nas migrations copiadas para `src/test/resources/db/migration/`.
 - O workflow não exporta as variáveis `DATABASE_*`, então a conexão usa os defaults de `TestDataBaseConfig`. A senha do container vem do secret `POSTGRES_PASSWORD`, que portanto precisa bater com o default do `TestDataBaseConfig`.
 
 ## Segredos e Arquivos Locais
