@@ -24,15 +24,17 @@
 
 * 📝 Log4j2
 
-* ☕️ Java 21
+* 🦋 Flyway
   
 * 🔄 Lombok
 
+* ☕️ Java 21
+
 * 🐘 PostgreSQL 18
 
-* 🧪 JUnit 5 + JaCoCo
+* 🗄️ Spring Data JPA
 
-* 🦋 Flyway (apenas nos testes)
+* 🧪 JUnit 5 + JaCoCo
 
 * 🟢 Spring Boot 4.0.5
 
@@ -45,8 +47,6 @@
 * 🐳 Docker / Docker Compose
 
 * 📑 SpringDoc OpenAPI (Swagger UI)
-
-* 🗄️ Spring Data JPA
 
 <br> 
 

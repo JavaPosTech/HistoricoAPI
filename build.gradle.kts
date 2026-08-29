@@ -40,7 +40,7 @@ dependencies {
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 
-	// Logging - o starter já traz o slf4j-api e o binding log4j-slf4j2-impl
+	// Logging
 	implementation("org.springframework.boot:spring-boot-starter-log4j2")
 
 	// PostgreSQL
@@ -52,8 +52,6 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-graphql-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 
-	// Flyway - somente no classpath de teste: as migrations criam o schema da suite,
-	// enquanto em dev e prod o schema continua vindo da AgendamentoAPI
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway")
 	testImplementation("org.flywaydb:flyway-database-postgresql")
 
