@@ -32,6 +32,8 @@
 
 * 🧪 JUnit 5 + JaCoCo
 
+* 🦋 Flyway (apenas nos testes)
+
 * 🟢 Spring Boot 4.0.5
 
 * 🔷 Spring for GraphQL
@@ -68,6 +70,9 @@ src/main/resources/
 ├── application.yaml  # Perfis dev, prod e test
 ├── log4j2.xml        # Console em dev; arquivo rotativo em prod
 └── graphql/          # Schemas .graphqls
+
+src/test/resources/
+└── db/migration/     # Migrations Flyway (perfil test) — cópia das da AgendamentoAPI
 ```
 
 <br> 
@@ -135,7 +140,9 @@ O projeto disponibiliza três arquivos Compose:
 
 > ℹ️ Os dois arquivos do PostgreSQL são **idênticos aos da AgendamentoAPI** e usam nome de projeto e de volume fixos. Isso significa que tanto faz de qual projeto o banco é iniciado: o container e os dados serão sempre os mesmos. Suba o banco **uma vez**, a partir de qualquer um dos repositórios.
 
-> ⚠️ **O schema é criado pelas migrations Flyway da AgendamentoAPI.** Esta API apenas lê os dados e não possui Flyway nem `ddl-auto`. Portanto, a AgendamentoAPI precisa ter sido iniciada ao menos uma vez contra o banco antes que a HistoricoAPI (ou a suíte de testes) funcione.
+> ⚠️ **Em dev e prod o schema é criado pelas migrations Flyway da AgendamentoAPI.** Esta API apenas lê os dados e não possui `ddl-auto`. Portanto, a AgendamentoAPI precisa ter sido iniciada ao menos uma vez contra o banco antes que a HistoricoAPI funcione nesses perfis.
+
+> ℹ️ **A suíte de testes é exceção:** ela cria o próprio schema. O Flyway está no projeto apenas no classpath de teste e as migrations estão copiadas em `src/test/resources/db/migration/`, então basta um PostgreSQL vazio no ar para rodar `./gradlew test`.
 
 <br> 
 
@@ -331,14 +338,30 @@ A resposta `200` traz três exemplos — paciente encontrado, paciente inexisten
 
 ## 🧪 Testes
 
-A suíte de testes é composta por **testes de integração reais**: eles sobem o contexto do Spring e se conectam a um PostgreSQL de verdade. Por isso, **o banco precisa estar no ar antes de executar os testes**:
+A suíte de testes é composta por **testes de integração reais**: eles sobem o contexto do Spring e se conectam a um PostgreSQL de verdade. Por isso, **o banco precisa estar no ar antes de executar os testes** — mas pode estar completamente vazio:
 
 ```bash
-docker compose -f docker-compose-postgres-dev.yml up -d
+docker compose -f docker-compose-postgres-dev.yml up -d --wait
 ./gradlew test
 ```
 
 Os testes utilizam o perfil `test` e devem ser executados a partir da raiz do projeto.
+
+<br> 
+
+### 🦋 Flyway no perfil de testes
+
+O schema e a carga de dados que a suíte precisa são criados pelo **Flyway**, restrito ao perfil `test`:
+
+- A dependência entra no `build.gradle.kts` como `testImplementation`, ou seja, o Flyway **não existe no classpath de runtime** — o *fat jar* do Boot não contém nenhuma classe dele, e dev e prod não têm como migrar nada.
+- No `application.yaml`, `spring.flyway.enabled` é `false` no documento raiz e `true` apenas no documento do perfil `test`.
+- As migrations ficam em `src/test/resources/db/migration/`.
+
+Isso elimina a dependência de subir a AgendamentoAPI antes de rodar os testes, e faz a suíte funcionar na CI, onde o container do PostgreSQL sobe vazio.
+
+> ⚠️ Os arquivos `V1.0__CreateTables.sql` e `V1.1__Inserts.sql` são **cópias byte a byte** das migrations da AgendamentoAPI, e precisam continuar assim. Como o banco de desenvolvimento é compartilhado, a suíte pode encontrar um `flyway_schema_history` criado pela AgendamentoAPI; qualquer diferença no conteúdo mudaria o *checksum* e faria a validação do Flyway falhar. Ao alterar uma migration lá, recopie o arquivo para cá sem editar nada.
+
+Os dois cenários reais funcionam sem configuração adicional: em um **banco vazio** o Flyway aplica as duas migrations e insere a carga inicial; em um **banco já migrado pela AgendamentoAPI** ele reconhece o histórico e não faz nada, e os testes rodam sobre os dados existentes.
 
 <br> 
 
@@ -373,6 +396,8 @@ O workflow `.github/workflows/workflow.yml` é executado a cada **Pull Request**
 ```
 
 Como o `build` também roda a suíte de testes, o Pull Request só fica verde se todos os testes passarem.
+
+> ℹ️ O container do PostgreSQL sobe vazio na CI, sem schema e sem dados. Quem prepara o banco é o **Flyway do perfil `test`**, durante a própria execução da suíte — por isso o workflow não precisa de nenhum passo extra de carga.
 
 > ℹ️ A senha do banco utilizado pelo workflow vem do *secret* `POSTGRES_PASSWORD`, configurado nas *Settings* do repositório.
 

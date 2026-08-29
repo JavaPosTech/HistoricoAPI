@@ -26,6 +26,9 @@ spring:
   jpa:
     open-in-view: false
 
+  flyway:
+    enabled: false
+
   data:
     web:
       pageable:
@@ -77,3 +80,6 @@ spring:
   config:
     activate:
       on-profile: test
+
+  flyway:
+    enabled: true

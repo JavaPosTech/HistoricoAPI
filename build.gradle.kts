@@ -56,6 +56,11 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 
+	// Flyway - somente no classpath de teste: as migrations criam o schema da suite,
+	// enquanto em dev e prod o schema continua vindo da AgendamentoAPI
+	testImplementation("org.springframework.boot:spring-boot-starter-flyway")
+	testImplementation("org.flywaydb:flyway-database-postgresql")
+
 }
 
 tasks.withType<Test> {
