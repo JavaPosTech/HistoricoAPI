@@ -155,6 +155,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
+    /**
+     * Os handlers abaixo atendem o pipeline do GraphQL, que não passa pelo
+     * HandlerExceptionResolver do Spring MVC. Sem eles as exceções de negócio
+     * chegariam ao cliente como INTERNAL_ERROR com a mensagem mascarada.
+     */
     @GraphQlExceptionHandler
     public GraphQLError handlePacienteNaoEncontradoException(PacienteNaoEncontradoException ex, DataFetchingEnvironment pDataFetchingEnvironment) {
         return GraphqlErrorBuilder.newError(pDataFetchingEnvironment)

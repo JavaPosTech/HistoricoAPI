@@ -157,14 +157,14 @@ public class SwaggerConfig {
                 .description("""
                         API responsável pelo armazenamento do histórico de consultas e pela
                         disponibilização dos dados por meio de uma interface **GraphQL**.
-                        
-                        Toda a comunicação acontece em um único endpoint — `POST /graphql` — que recebe
+
+                        Toda a comunicação acontece em um único endpoint, **POST /graphql**, que recebe
                         o documento da query no corpo da requisição. Não existem rotas REST: a operação
                         abaixo descreve o transporte HTTP, e o contrato dos dados está nos arquivos
-                        `.graphqls` e nos *schemas* desta página.
-                        
+                        .graphqls e nos *schemas* desta página.
+
                         Para explorar o schema de forma interativa, utilize a **GraphiQL** em
-                        `/HistoricoAPI/graphiql`.
+                        /HistoricoAPI/graphiql.
                         """);
     }
 
@@ -198,13 +198,13 @@ public class SwaggerConfig {
                 .summary("Executa uma operação GraphQL")
                 .description("""
                         Endpoint único da API. O corpo da requisição carrega o documento GraphQL
-                        (`query`), o nome da operação (`operationName`) e as variáveis (`variables`).
-                        
-                        A única query publicada pelo schema é
-                        `getHistoricoPaciente(pacienteId: ID!): Paciente`. Ela devolve os dados
-                        cadastrais do paciente junto com o histórico clínico (`historico`) e as
-                        consultas agendadas (`consultas`). As datas já vêm formatadas nos padrões
-                        `dd/MM/yyyy` e `dd/MM/yyyy - HH:mm:ss`.
+                        em **query**, o nome da operação em **operationName** e as variáveis em
+                        **variables**.
+
+                        A única query publicada pelo schema é **getHistoricoPaciente**, que recebe o
+                        id do paciente e devolve os dados cadastrais junto com o histórico clínico
+                        (historico) e as consultas agendadas (consultas). As datas já vêm formatadas
+                        nos padrões dd/MM/yyyy e dd/MM/yyyy - HH:mm:ss.
 
                         ```graphql
                         %s
@@ -216,13 +216,13 @@ public class SwaggerConfig {
                         { "pacienteId": 1 }
                         ```
 
-                        No exemplo do corpo da requisição a query aparece em uma única linha: o JSON
-                        não aceita quebra de linha dentro de uma string, e mantê-la formatada encheria
-                        o exemplo de `\\n` escapados. As duas formas são equivalentes para o servidor.
+                        No exemplo do corpo da requisição a query aparece em uma única linha porque o
+                        JSON não aceita quebra de linha dentro de uma string. As duas formas são
+                        equivalentes para o servidor.
 
-                        Os campos declarados como `ID!` no schema GraphQL trafegam como **String** na
-                        resposta (`"1"`), ainda que o schema `PacienteDTO` desta página os descreva
-                        como inteiros — a conversão é feita pela própria especificação GraphQL.
+                        Os campos declarados como ID! no schema GraphQL trafegam como **String** na
+                        resposta, ainda que o schema PacienteDTO desta página os descreva como
+                        inteiros — a conversão é feita pela própria especificação GraphQL.
                         """.formatted(QUERY_HISTORICO_PACIENTE.strip()))
                 .requestBody(corpoRequisicao())
                 .responses(respostas()));
@@ -248,11 +248,11 @@ public class SwaggerConfig {
         return new ApiResponses()
                 .addApiResponse("200", new ApiResponse()
                         .description("""
-                                Operação processada. O GraphQL responde `200` mesmo quando a execução
-                                falha: nesse caso `data.getHistoricoPaciente` vem `null` e o motivo é
-                                descrito no array `errors`, com a classificação em
-                                `extensions.classification` — `BAD_REQUEST` para id inválido e
-                                `NOT_FOUND` para paciente inexistente.
+                                Operação processada. O GraphQL responde **200** mesmo quando a execução
+                                falha: nesse caso data.getHistoricoPaciente vem nulo e o motivo é
+                                descrito no array errors, com a classificação em
+                                extensions.classification — **BAD_REQUEST** para id inválido e
+                                **NOT_FOUND** para paciente inexistente.
                                 """)
                         .content(new Content().addMediaType(APPLICATION_JSON, new MediaType()
                                 .schema(new Schema<>().$ref(REF_RESPOSTA_GRAPHQL))
@@ -268,7 +268,7 @@ public class SwaggerConfig {
                 .addApiResponse("400", new ApiResponse()
                         .description("""
                                 Corpo malformado ou ilegível. O erro é tratado pelo
-                                `GlobalExceptionHandler` do Spring MVC, antes de chegar ao GraphQL.
+                                **GlobalExceptionHandler** do Spring MVC, antes de chegar ao GraphQL.
                                 """)
                         .content(conteudoErro(400,
                                 "Requisição Inválida!",
@@ -305,7 +305,7 @@ public class SwaggerConfig {
                         .description("Nome da operação. Obrigatório apenas quando o documento declara mais de uma.")
                         .nullable(true))
                 .addProperty("variables", new ObjectSchema()
-                        .description("Variáveis do documento — por exemplo `{ \"pacienteId\": 1 }`.")
+                        .description("Variáveis do documento — por exemplo { \"pacienteId\": 1 }.")
                         .additionalProperties(Boolean.TRUE))
                 .addRequiredItem("query");
     }
@@ -339,7 +339,7 @@ public class SwaggerConfig {
                         .description("Metadados do erro.")
                         .addProperty("classification", new StringSchema()
                                 ._enum(List.of("BAD_REQUEST", "NOT_FOUND", "INTERNAL_ERROR"))
-                                .description("Classificação atribuída pelo `GlobalExceptionHandler`.")));
+                                .description("Classificação atribuída pelo **GlobalExceptionHandler**.")));
     }
 
     private Object json(String exemplo) {
