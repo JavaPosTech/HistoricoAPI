@@ -238,8 +238,8 @@ São **três** arquivos Compose, e a diferença entre eles importa:
 
 | Arquivo | Papel |
 | --- | --- |
-| `docker-compose-postgres-dev.yml` | PostgreSQL local com credenciais fixas (`postgres` / `fiap@2026`), sem `.env`. Projeto `fiap-fase3-dev`, volume `fiap-postgres-data-dev`. É o banco do dia a dia e da suíte de testes. |
-| `docker-compose-postgres-prod.yml` | PostgreSQL de produção: lê o `.env`, healthcheck `pg_isready`, `TZ: America/Sao_Paulo`. Projeto `fiap-fase3`, volume `fiap-postgres-data`. |
+| `docker-compose-postgres-dev.yml` | PostgreSQL local com credenciais fixas (`postgres` / `fiap@2026`), sem `.env`. Projeto `fiap-fase3-dev`, volume `fiap-postgres-data-dev`. É o banco do dia a dia e da suíte de testes. A definição do PostgreSQL é igual à da AgendamentoAPI (o RabbitMQ, exclusivo dela, não entra aqui). |
+| `docker-compose-postgres-prod.yml` | PostgreSQL de produção: lê o `.env`, healthcheck `pg_isready`, `TZ: America/Sao_Paulo`. Projeto `fiap-fase3`, volume `fiap-postgres-data`. A definição do PostgreSQL é igual à da AgendamentoAPI; esta API não usa mensageria, então o RabbitMQ não aparece nos composes daqui. |
 | `docker-compose-historicoapi.yml` | Apenas a API (perfil `prod`, `9028:9027`, volume `./logs`). Declara `shared-net` como rede **externa**. |
 
 **Banco compartilhado entre os microsserviços.** Os dois compose do PostgreSQL criam a rede `shared-net` e são **idênticos aos da AgendamentoAPI**, com `name:` de projeto e de volume fixos — de propósito. Isso garante que o banco iniciado a partir de qualquer repositório da fase é o mesmo container, apontando para o mesmo volume. O banco sobe **uma vez**; os serviços entram na rede depois. Ao alterar um desses dois arquivos, **replique a alteração no repositório irmão**, senão os projetos passam a subir bancos diferentes.

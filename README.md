@@ -138,7 +138,7 @@ O projeto disponibiliza três arquivos Compose:
 | `docker-compose-postgres-prod.yml` | PostgreSQL de produção: lê o `.env`, possui *healthcheck* e cria a rede `shared-net`. |
 | `docker-compose-historicoapi.yml` | Apenas a API, no perfil `prod`, conectando-se à `shared-net` já existente. |
 
-> ℹ️ Os dois arquivos do PostgreSQL são **idênticos aos da AgendamentoAPI** e usam nome de projeto e de volume fixos. Isso significa que tanto faz de qual projeto o banco é iniciado: o container e os dados serão sempre os mesmos. Suba o banco **uma vez**, a partir de qualquer um dos repositórios.
+> ℹ️ A definição do PostgreSQL (serviço, rede `shared-net` e volumes) é **igual à da AgendamentoAPI** e usam nome de projeto e de volume fixos. Isso significa que tanto faz de qual projeto o banco é iniciado: o container e os dados serão sempre os mesmos. Suba o banco **uma vez**, a partir de qualquer um dos repositórios.
 
 > ⚠️ **Em dev e prod o schema é criado pelas migrations Flyway da AgendamentoAPI.** Esta API apenas lê os dados e não possui `ddl-auto`. Portanto, a AgendamentoAPI precisa ter sido iniciada ao menos uma vez contra o banco antes que a HistoricoAPI funcione nesses perfis.
 
@@ -187,6 +187,8 @@ $ Exemplo: postgres@2026
 ```
 
 As mesmas variáveis são utilizadas para **criar** o container do PostgreSQL e para a API se **conectar** a ele, de modo que as credenciais não têm como divergir. Se `DATABASE_PASSWORD` não estiver preenchida, o Compose interrompe a execução com uma mensagem explícita, em vez de subir um banco com senha em branco.
+
+> ℹ️ Esta API **não usa RabbitMQ**. O broker é exclusivo da AgendamentoAPI e sobe apenas com ela — os composes da HistoricoAPI não o declaram.
 
 > ℹ️ Não é necessário configurar a porta do banco: dentro da rede `shared-net` a conexão é sempre feita em `postgres:5432`, valor já fixado nos arquivos Compose.
 

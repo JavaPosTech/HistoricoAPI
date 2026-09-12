@@ -1,17 +1,3 @@
-# Banco de dados compartilhado pelos microsservicos da Fase 3.
-#
-# Sobe UMA unica vez, a partir de qualquer um dos projetos: o nome do projeto
-# Compose e o nome do volume sao fixos, entao o container e os dados sao sempre
-# os mesmos, independentemente do diretorio de onde o comando for executado.
-#
-#   docker compose -f docker-compose-postgres-prod.yml up -d --wait
-#
-# Tambem e este arquivo que cria a rede `shared-net`, na qual os servicos
-# alcancam o banco pelo hostname `postgres` na porta interna `5432`.
-#
-# O schema e criado pelas migrations Flyway da AgendamentoAPI, executadas
-# automaticamente na inicializacao daquele servico.
-
 name: fiap-fase3
 
 services:
@@ -24,7 +10,7 @@ services:
 
       POSTGRES_DB: ${DATABASE_NAME:-postgres}
       POSTGRES_USER: ${DATABASE_USER:-postgres}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?defina DATABASE_PASSWORD no arquivo .env}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
 
     ports:
       - "8745:5432"
