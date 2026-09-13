@@ -101,4 +101,15 @@ class HistoricoControllerTest extends AbstractControllerTest {
                     Assertions.assertEquals(ErrorType.BAD_REQUEST, erros.getFirst().getErrorType());
                 });
     }
+
+    @Test
+    void getHistoricoPacienteIdNaoNumericoTest() {
+        executarQuery(QueryGraphQl.HISTORICO_PACIENTE, "pacienteId", "abc")
+                .errors()
+                .satisfy(erros -> {
+                    Assertions.assertEquals(1, erros.size());
+                    Assertions.assertEquals(ErrorType.BAD_REQUEST, erros.getFirst().getErrorType());
+                    Assertions.assertEquals("O argumento [pacienteId] possui um valor inválido!", erros.getFirst().getMessage());
+                });
+    }
 }

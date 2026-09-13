@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
 public class SwaggerConfig {
@@ -28,6 +29,7 @@ public class SwaggerConfig {
     private static final String TAG_GRAPHQL = "GraphQL";
     private static final String GRAPHQL_PATH = "/graphql";
     private static final String APPLICATION_JSON = "application/json";
+    private static final String APPLICATION_GRAPHQL_RESPONSE_JSON = "application/graphql-response+json";
     private static final String REF_PACIENTE = Components.COMPONENTS_SCHEMAS_REF + "PacienteDTO";
     private static final String REF_ERRO = Components.COMPONENTS_SCHEMAS_REF + "ErrorResponseDTO";
     private static final String REF_ERRO_GRAPHQL = Components.COMPONENTS_SCHEMAS_REF + "GraphQlError";
@@ -71,32 +73,39 @@ public class SwaggerConfig {
               "data": {
                 "getHistoricoPaciente": {
                   "id": "1",
-                  "nome": "Maria",
-                  "sobrenome": "Oliveira",
-                  "cpf": "123.456.789-00",
-                  "email": "maria.oliveira@email.com",
-                  "telefone": "(11) 98765-4321",
-                  "endereco": "Rua das Flores, 123 - São Paulo/SP",
-                  "dataNascimento": "15/03/1990",
-                  "dataCadastro": "10/01/2026 - 14:32:05",
-                  "situacaoCadastro": "Ativo",
+                  "nome": "PEDRO",
+                  "sobrenome": "ALMEIDA",
+                  "cpf": "12345678901",
+                  "email": "pedro.almeida@email.com",
+                  "telefone": "(19) 99999-1001",
+                  "endereco": "Rua das Palmeiras, 50 - Limeira - SP",
+                  "dataNascimento": "15/05/1990",
+                  "dataCadastro": "20/08/2026 - 09:15:00",
+                  "situacaoCadastro": "ATIVO",
                   "historico": [
                     {
                       "id": "1",
-                      "queixaPrincipal": "Dor de cabeça persistente",
-                      "historicoDoenca": "Enxaqueca crônica diagnosticada em 2020",
-                      "medicamentos": "Dipirona 500mg",
-                      "alergias": "Penicilina",
-                      "observacoes": "Retorno em 30 dias"
+                      "queixaPrincipal": "Dor no peito",
+                      "historicoDoenca": "Paciente relata dores no peito recorrentes há aproximadamente 2 meses.",
+                      "medicamentos": "Losartana 50mg",
+                      "alergias": "Nenhuma alergia conhecida.",
+                      "observacoes": "Recomendada avaliação cardiológica."
                     }
                   ],
                   "consultas": [
                     {
+                      "id": "4",
+                      "nomeMedico": "JOAO",
+                      "dataHoraConsulta": "22/08/2026 - 14:00:00",
+                      "observacao": "Retorno cardiológico.",
+                      "dataCadastro": "20/08/2026 - 09:15:00"
+                    },
+                    {
                       "id": "1",
-                      "nomeMedico": "Carlos Andrade",
-                      "dataHoraConsulta": "20/02/2026 - 09:00:00",
-                      "observacao": "Consulta de rotina",
-                      "dataCadastro": "10/01/2026 - 14:35:12"
+                      "nomeMedico": "JOAO",
+                      "dataHoraConsulta": "22/08/2026 - 08:00:00",
+                      "observacao": "Primeira consulta cardiológica.",
+                      "dataCadastro": "20/08/2026 - 09:15:00"
                     }
                   ]
                 }
@@ -106,31 +115,83 @@ public class SwaggerConfig {
 
     private static final String EXEMPLO_NAO_ENCONTRADO = """
             {
-              "data": {
-                "getHistoricoPaciente": null
-              },
               "errors": [
                 {
                   "message": "Paciente não encontrado - ID: 999",
-                  "locations": [{ "line": 2, "column": 5 }],
+                  "locations": [{ "line": 1, "column": 51 }],
                   "path": ["getHistoricoPaciente"],
                   "extensions": { "classification": "NOT_FOUND" }
+                }
+              ],
+              "data": {
+                "getHistoricoPaciente": null
+              }
+            }
+            """;
+
+    private static final String EXEMPLO_ID_INVALIDO = """
+            {
+              "errors": [
+                {
+                  "message": "O ID do Paciente deve ser um número inteiro positivo!",
+                  "locations": [{ "line": 1, "column": 51 }],
+                  "path": ["getHistoricoPaciente"],
+                  "extensions": { "classification": "BAD_REQUEST" }
+                }
+              ],
+              "data": {
+                "getHistoricoPaciente": null
+              }
+            }
+            """;
+
+    private static final String EXEMPLO_ID_NAO_NUMERICO = """
+            {
+              "errors": [
+                {
+                  "message": "O argumento [pacienteId] possui um valor inválido!",
+                  "locations": [{ "line": 1, "column": 51 }],
+                  "path": ["getHistoricoPaciente"],
+                  "extensions": { "classification": "BAD_REQUEST" }
+                }
+              ],
+              "data": {
+                "getHistoricoPaciente": null
+              }
+            }
+            """;
+
+    private static final String EXEMPLO_VARIAVEL_AUSENTE = """
+            {
+              "errors": [
+                {
+                  "message": "Variable 'pacienteId' has an invalid value: Variable 'pacienteId' has coerced Null value for NonNull type 'ID!'",
+                  "locations": [{ "line": 1, "column": 31 }],
+                  "extensions": { "classification": "ValidationError" }
                 }
               ]
             }
             """;
 
-    private static final String EXEMPLO_REQUISICAO_INVALIDA = """
+    private static final String EXEMPLO_CAMPO_INEXISTENTE = """
             {
-              "data": {
-                "getHistoricoPaciente": null
-              },
               "errors": [
                 {
-                  "message": "O ID do Paciente deve ser um número inteiro positivo!",
-                  "locations": [{ "line": 2, "column": 5 }],
-                  "path": ["getHistoricoPaciente"],
-                  "extensions": { "classification": "BAD_REQUEST" }
+                  "message": "Validation error (FieldUndefined@[getHistoricoPaciente/idade]) : Field 'idade' in type 'Paciente' is undefined",
+                  "locations": [{ "line": 1, "column": 41 }],
+                  "extensions": { "classification": "ValidationError" }
+                }
+              ]
+            }
+            """;
+
+    private static final String EXEMPLO_SINTAXE_INVALIDA = """
+            {
+              "errors": [
+                {
+                  "message": "Invalid syntax with offending token '<EOF>' at line 1 column 44",
+                  "locations": [{ "line": 1, "column": 44 }],
+                  "extensions": { "classification": "InvalidSyntax" }
                 }
               ]
             }
@@ -163,8 +224,8 @@ public class SwaggerConfig {
                         abaixo descreve o transporte HTTP, e o contrato dos dados está nos arquivos
                         .graphqls e nos *schemas* desta página.
 
-                        Para explorar o schema de forma interativa, utilize a **GraphiQL** em
-                        /HistoricoAPI/graphiql.
+                        A API não exige autenticação. Para explorar o schema de forma interativa,
+                        utilize a **GraphiQL** em /HistoricoAPI/graphiql.
                         """);
     }
 
@@ -186,7 +247,7 @@ public class SwaggerConfig {
     }
 
     private void registrarSchema(Components components, Class<?> classe) {
-        ModelConverters.getInstance()
+        ModelConverters.getInstance(true)
                 .readAll(classe)
                 .forEach(components::addSchemas);
     }
@@ -204,7 +265,8 @@ public class SwaggerConfig {
                         A única query publicada pelo schema é **getHistoricoPaciente**, que recebe o
                         id do paciente e devolve os dados cadastrais junto com o histórico clínico
                         (historico) e as consultas agendadas (consultas). As datas já vêm formatadas
-                        nos padrões dd/MM/yyyy e dd/MM/yyyy - HH:mm:ss.
+                        nos padrões dd/MM/yyyy e dd/MM/yyyy - HH:mm:ss, e os campos do tipo ID
+                        chegam como texto ("1").
 
                         ```graphql
                         %s
@@ -218,11 +280,14 @@ public class SwaggerConfig {
 
                         No exemplo do corpo da requisição a query aparece em uma única linha porque o
                         JSON não aceita quebra de linha dentro de uma string. As duas formas são
-                        equivalentes para o servidor.
+                        equivalentes para o servidor, mas as posições informadas em **locations** nos
+                        erros mudam conforme a formatação enviada.
 
-                        Os campos declarados como ID! no schema GraphQL trafegam como **String** na
-                        resposta, ainda que o schema PacienteDTO desta página os descreva como
-                        inteiros — a conversão é feita pela própria especificação GraphQL.
+                        O formato da resposta segue o cabeçalho **Accept**. Com **application/json**,
+                        o padrão, todo documento que chega ao GraphQL recebe **200**, e as falhas vêm
+                        descritas no array **errors**. Com **application/graphql-response+json**, um
+                        documento rejeitado antes da execução, por erro de sintaxe ou de validação,
+                        recebe **400**.
                         """.formatted(QUERY_HISTORICO_PACIENTE.strip()))
                 .requestBody(corpoRequisicao())
                 .responses(respostas()));
@@ -236,64 +301,119 @@ public class SwaggerConfig {
 
         return new RequestBody()
                 .required(true)
-                .description("Documento GraphQL a ser executado.")
+                .description("Documento GraphQL a ser executado. Propriedades fora do envelope são rejeitadas com **400**.")
                 .content(new Content().addMediaType(APPLICATION_JSON, new MediaType()
                         .schema(new Schema<>().$ref(REF_REQUISICAO_GRAPHQL))
-                        .addExamples("getHistoricoPaciente", new Example()
-                                .summary("Histórico Completo - Paciente: [ID: 1]")
-                                .value(exemplo))));
+                        .addExamples("getHistoricoPaciente", exemplo("Histórico Completo - Paciente: [ID: 1]", exemplo))));
     }
 
     private ApiResponses respostas() {
         return new ApiResponses()
                 .addApiResponse("200", new ApiResponse()
                         .description("""
-                                Operação processada. O GraphQL responde **200** mesmo quando a execução
-                                falha: nesse caso data.getHistoricoPaciente vem nulo e o motivo é
-                                descrito no array errors, com a classificação em
-                                extensions.classification — **BAD_REQUEST** para id inválido e
-                                **NOT_FOUND** para paciente inexistente.
+                                Operação processada pelo GraphQL. A resposta é **200** mesmo quando a
+                                execução falha: o motivo vem no array errors, com a classificação em
+                                extensions.classification.
+
+                                - **BAD_REQUEST:** id zero, negativo ou não numérico.
+                                - **NOT_FOUND:** paciente inexistente.
+                                - **INTERNAL_ERROR:** falha inesperada na execução, com a mensagem mascarada.
+                                - **ValidationError** e **InvalidSyntax:** documento rejeitado antes da execução,
+                                  como id nulo ou ausente, campo inexistente ou query malformada. Nesses casos a
+                                  resposta não traz data.
                                 """)
-                        .content(new Content().addMediaType(APPLICATION_JSON, new MediaType()
-                                .schema(new Schema<>().$ref(REF_RESPOSTA_GRAPHQL))
-                                .addExamples("sucesso", new Example()
-                                        .summary("Paciente encontrado")
-                                        .value(json(EXEMPLO_SUCESSO)))
-                                .addExamples("pacienteNaoEncontrado", new Example()
-                                        .summary("Paciente inexistente — NOT_FOUND")
-                                        .value(json(EXEMPLO_NAO_ENCONTRADO)))
-                                .addExamples("requisicaoInvalida", new Example()
-                                        .summary("Id nulo, zero ou negativo — BAD_REQUEST")
-                                        .value(json(EXEMPLO_REQUISICAO_INVALIDA))))))
+                        .content(new Content()
+                                .addMediaType(APPLICATION_JSON, respostaGraphQl()
+                                        .addExamples("sucesso", exemplo("Paciente encontrado", json(EXEMPLO_SUCESSO)))
+                                        .addExamples("pacienteNaoEncontrado", exemplo("Paciente inexistente: NOT_FOUND", json(EXEMPLO_NAO_ENCONTRADO)))
+                                        .addExamples("idInvalido", exemplo("Id zero ou negativo: BAD_REQUEST", json(EXEMPLO_ID_INVALIDO)))
+                                        .addExamples("idNaoNumerico", exemplo("Id não numérico: BAD_REQUEST", json(EXEMPLO_ID_NAO_NUMERICO)))
+                                        .addExamples("variavelAusente", exemplo("Id nulo ou ausente: ValidationError", json(EXEMPLO_VARIAVEL_AUSENTE)))
+                                        .addExamples("campoInexistente", exemplo("Campo inexistente: ValidationError", json(EXEMPLO_CAMPO_INEXISTENTE)))
+                                        .addExamples("sintaxeInvalida", exemplo("Query malformada: InvalidSyntax", json(EXEMPLO_SINTAXE_INVALIDA))))
+                                .addMediaType(APPLICATION_GRAPHQL_RESPONSE_JSON, respostaGraphQl()
+                                        .addExamples("sucesso", exemplo("Paciente encontrado", json(EXEMPLO_SUCESSO)))
+                                        .addExamples("pacienteNaoEncontrado", exemplo("Paciente inexistente: NOT_FOUND", json(EXEMPLO_NAO_ENCONTRADO)))
+                                        .addExamples("idInvalido", exemplo("Id zero ou negativo: BAD_REQUEST", json(EXEMPLO_ID_INVALIDO)))
+                                        .addExamples("idNaoNumerico", exemplo("Id não numérico: BAD_REQUEST", json(EXEMPLO_ID_NAO_NUMERICO))))))
                 .addApiResponse("400", new ApiResponse()
                         .description("""
-                                Corpo malformado ou ilegível. O erro é tratado pelo
-                                **GlobalExceptionHandler** do Spring MVC, antes de chegar ao GraphQL.
+                                Requisição recusada antes da execução, em duas situações.
+
+                                - **Corpo inválido:** JSON malformado, propriedade fora do envelope, propriedade
+                                  com tipo incompatível ou corpo sem **query**. O erro é tratado pelo
+                                  **GlobalExceptionHandler** do Spring MVC e segue o formato ErrorResponseDTO,
+                                  qualquer que seja o Accept. O detalhe técnico fica apenas no log da aplicação.
+                                - **Documento rejeitado com Accept application/graphql-response+json:** erro de
+                                  sintaxe ou de validação, devolvido no envelope GraphQL e sem data.
                                 """)
-                        .content(conteudoErro(400,
-                                "Requisição Inválida!",
-                                "/HistoricoAPI/problems/unreadable-message",
-                                "JSON parse error: Unexpected end-of-input")))
+                        .content(new Content()
+                                .addMediaType(APPLICATION_JSON, new MediaType()
+                                        .schema(new Schema<>().$ref(REF_ERRO))
+                                        .addExamples("jsonMalformado", exemplo("JSON malformado", erro(400,
+                                                "Requisição Inválida!",
+                                                "/HistoricoAPI/problems/unreadable-message",
+                                                "O corpo da requisição não é um JSON válido ou não segue o formato de uma requisição GraphQL!")))
+                                        .addExamples("propriedadeDesconhecida", exemplo("Propriedade fora do envelope", erro(400,
+                                                "Requisição Inválida!",
+                                                "/HistoricoAPI/problems/unreadable-message",
+                                                "O corpo da requisição não é um JSON válido ou não segue o formato de uma requisição GraphQL!")))
+                                        .addExamples("corpoSemQuery", exemplo("Corpo sem query", erro(400,
+                                                "Requisição Inválida!",
+                                                "/HistoricoAPI/problems/invalid-graphql-request",
+                                                "O corpo da requisição não é uma requisição GraphQL válida!"))))
+                                .addMediaType(APPLICATION_GRAPHQL_RESPONSE_JSON, respostaGraphQl()
+                                        .addExamples("variavelAusente", exemplo("Id nulo ou ausente: ValidationError", json(EXEMPLO_VARIAVEL_AUSENTE)))
+                                        .addExamples("campoInexistente", exemplo("Campo inexistente: ValidationError", json(EXEMPLO_CAMPO_INEXISTENTE)))
+                                        .addExamples("sintaxeInvalida", exemplo("Query malformada: InvalidSyntax", json(EXEMPLO_SINTAXE_INVALIDA))))))
+                .addApiResponse("405", new ApiResponse()
+                        .description("""
+                                Método HTTP não suportado. O endpoint aceita apenas **POST**, informado no
+                                cabeçalho Allow. PUT, PATCH e DELETE recebem o corpo abaixo; GET recebe o
+                                405 do próprio Spring for GraphQL, sem corpo.
+                                """)
+                        .content(new Content().addMediaType(APPLICATION_JSON, new MediaType()
+                                .schema(new Schema<>().$ref(REF_ERRO))
+                                .example(erro(405,
+                                        "Método não permitido!",
+                                        "/HistoricoAPI/problems/method-not-allowed",
+                                        "O método [PUT] não é suportado por este endpoint!")))))
+                .addApiResponse("415", new ApiResponse()
+                        .description("""
+                                Formato não suportado: Content-Type diferente de application/json, ou Accept
+                                sem application/json nem application/graphql-response+json. A resposta vem
+                                sem corpo.
+                                """))
                 .addApiResponse("500", new ApiResponse()
-                        .description("Erro inesperado no processamento da requisição.")
-                        .content(conteudoErro(500,
-                                "Erro Interno no Servidor!",
-                                "/HistoricoAPI/problems/internal-server-error",
-                                "Falha inesperada ao processar a requisição.")));
+                        .description("""
+                                Erro inesperado no processamento da requisição. O detalhe da falha fica apenas
+                                no log da aplicação.
+                                """)
+                        .content(new Content().addMediaType(APPLICATION_JSON, new MediaType()
+                                .schema(new Schema<>().$ref(REF_ERRO))
+                                .example(erro(500,
+                                        "Erro Interno no Servidor!",
+                                        "/HistoricoAPI/problems/internal-server-error",
+                                        "Falha inesperada ao processar a requisição.")))));
     }
 
-    private Content conteudoErro(int status, String title, String type, String detail) {
+    private MediaType respostaGraphQl() {
+        return new MediaType().schema(new Schema<>().$ref(REF_RESPOSTA_GRAPHQL));
+    }
+
+    private Example exemplo(String resumo, Object valor) {
+        return new Example().summary(resumo).value(valor);
+    }
+
+    private Map<String, Object> erro(int status, String title, String type, String detail) {
         var exemplo = new LinkedHashMap<String, Object>();
         exemplo.put("status", status);
         exemplo.put("title", title);
         exemplo.put("instance", "/HistoricoAPI/graphql");
         exemplo.put("type", type);
         exemplo.put("detail", detail);
-        exemplo.put("timestamp", "10/01/2026 - 14:32:05");
-
-        return new Content().addMediaType(APPLICATION_JSON, new MediaType()
-                .schema(new Schema<>().$ref(REF_ERRO))
-                .example(exemplo));
+        exemplo.put("timestamp", "12/09/2026 - 23:17:23");
+        return exemplo;
     }
 
     private Schema<?> schemaRequisicao() {
@@ -301,45 +421,59 @@ public class SwaggerConfig {
                 .description("Corpo de uma requisição GraphQL sobre HTTP.")
                 .addProperty("query", new StringSchema()
                         .description("Documento GraphQL a ser executado."))
-                .addProperty("operationName", new StringSchema()
-                        .description("Nome da operação. Obrigatório apenas quando o documento declara mais de uma.")
-                        .nullable(true))
-                .addProperty("variables", new ObjectSchema()
-                        .description("Variáveis do documento — por exemplo { \"pacienteId\": 1 }.")
+                .addProperty("operationName", new Schema<>()
+                        .types(Set.of("string", "null"))
+                        .description("Nome da operação. Obrigatório apenas quando o documento declara mais de uma."))
+                .addProperty("variables", new Schema<>()
+                        .types(Set.of("object", "null"))
+                        .description("Variáveis do documento, por exemplo { \"pacienteId\": 1 }.")
                         .additionalProperties(Boolean.TRUE))
+                .addProperty("extensions", new Schema<>()
+                        .types(Set.of("object", "null"))
+                        .description("Extensões do protocolo. Não são usadas por esta API.")
+                        .additionalProperties(Boolean.TRUE))
+                .additionalProperties(Boolean.FALSE)
                 .addRequiredItem("query");
     }
 
     private Schema<?> schemaResposta() {
         return new ObjectSchema()
                 .description("Envelope de resposta definido pela especificação GraphQL.")
-                .addProperty("data", new ObjectSchema()
-                        .description("Resultado da operação.")
-                        .nullable(true)
-                        .addProperty("getHistoricoPaciente", new Schema<>().$ref(REF_PACIENTE).nullable(true)))
+                .addProperty("data", new Schema<>()
+                        .types(Set.of("object", "null"))
+                        .description("Resultado da operação. Ausente quando o documento é rejeitado antes da execução.")
+                        .addProperty("getHistoricoPaciente", new Schema<>()
+                                .oneOf(List.of(
+                                        new Schema<>().$ref(REF_PACIENTE),
+                                        new Schema<>().types(Set.of("null"))))
+                                .description("Nulo quando a execução falha.")))
                 .addProperty("errors", new ArraySchema()
                         .items(new Schema<>().$ref(REF_ERRO_GRAPHQL))
-                        .description("Presente somente quando a execução produz erros."));
+                        .description("Presente somente quando a operação produz erros."));
     }
 
     private Schema<?> schemaErroGraphQl() {
         return new ObjectSchema()
                 .description("Erro no formato definido pela especificação GraphQL.")
                 .addProperty("message", new StringSchema()
-                        .description("Mensagem do erro."))
-                .addProperty("path", new ArraySchema()
-                        .items(new StringSchema())
-                        .description("Caminho do campo que originou o erro."))
+                        .description("Mensagem do erro. Em INTERNAL_ERROR o texto é mascarado e traz apenas um identificador."))
                 .addProperty("locations", new ArraySchema()
                         .items(new ObjectSchema()
                                 .addProperty("line", new IntegerSchema())
                                 .addProperty("column", new IntegerSchema()))
                         .description("Posição do erro dentro do documento enviado."))
+                .addProperty("path", new ArraySchema()
+                        .items(new StringSchema())
+                        .description("Caminho do campo que originou o erro. Ausente nos erros anteriores à execução."))
                 .addProperty("extensions", new ObjectSchema()
                         .description("Metadados do erro.")
                         .addProperty("classification", new StringSchema()
-                                ._enum(List.of("BAD_REQUEST", "NOT_FOUND", "INTERNAL_ERROR"))
-                                .description("Classificação atribuída pelo **GlobalExceptionHandler**.")));
+                                ._enum(List.of("BAD_REQUEST", "NOT_FOUND", "INTERNAL_ERROR", "ValidationError", "InvalidSyntax"))
+                                .description("""
+                                        Classificação do erro. **BAD_REQUEST** e **NOT_FOUND** são atribuídas pelo
+                                        **GlobalExceptionHandler**, **ValidationError** e **InvalidSyntax** vêm do
+                                        próprio GraphQL, e **INTERNAL_ERROR** cobre qualquer outra falha.
+                                        """)));
     }
 
     private Object json(String exemplo) {

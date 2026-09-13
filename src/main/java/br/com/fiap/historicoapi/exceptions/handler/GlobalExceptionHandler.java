@@ -16,10 +16,15 @@ import org.springframework.graphql.execution.ErrorType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ServerWebInputException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.util.Set;
 
 @Slf4j
 @RestControllerAdvice
@@ -64,12 +69,29 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDTO> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest pHttpServletRequest) {
 
+        log.warn("Corpo da requisição ilegível! - URI: [{}] | Causa: [{}]", pHttpServletRequest.getRequestURI(), ex.getMostSpecificCause().getMessage());
+
         var response = new ErrorResponseDTO(
                 HttpStatus.BAD_REQUEST.value(),
                 "Requisição Inválida!",
                 pHttpServletRequest.getRequestURI(),
                 "/HistoricoAPI/problems/unreadable-message",
-                ex.getMostSpecificCause().getMessage());
+                "O corpo da requisição não é um JSON válido ou não segue o formato de uma requisição GraphQL!");
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ServerWebInputException.class)
+    public ResponseEntity<ErrorResponseDTO> handleServerWebInputException(ServerWebInputException ex, HttpServletRequest pHttpServletRequest) {
+
+        log.warn("Requisição GraphQL inválida! - URI: [{}] | Causa: [{}]", pHttpServletRequest.getRequestURI(), ex.getReason());
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Requisição Inválida!",
+                pHttpServletRequest.getRequestURI(),
+                "/HistoricoAPI/problems/invalid-graphql-request",
+                "O corpo da requisição não é uma requisição GraphQL válida!");
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -130,6 +152,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException ex, HttpServletRequest pHttpServletRequest) {
+        var metodosPermitidos = ex.getSupportedHttpMethods();
+
+        var response = new ErrorResponseDTO(
+                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                "Método não permitido!",
+                pHttpServletRequest.getRequestURI(),
+                "/HistoricoAPI/problems/method-not-allowed",
+                "O método [" + ex.getMethod() + "] não é suportado por este endpoint!");
+
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .headers(headers -> headers.setAllow(metodosPermitidos == null ? Set.of() : metodosPermitidos))
+                .body(response);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDuplicateResourceException(DataIntegrityViolationException ex, HttpServletRequest pHttpServletRequest) {
 
@@ -170,6 +208,16 @@ public class GlobalExceptionHandler {
         return GraphqlErrorBuilder.newError(pDataFetchingEnvironment)
                 .errorType(ErrorType.NOT_FOUND)
                 .message(ex.getMessage())
+                .build();
+    }
+
+    @GraphQlExceptionHandler
+    public GraphQLError handleBindException(BindException ex, DataFetchingEnvironment pDataFetchingEnvironment) {
+        var argumentos = String.join(", ", pDataFetchingEnvironment.getArguments().keySet());
+
+        return GraphqlErrorBuilder.newError(pDataFetchingEnvironment)
+                .errorType(ErrorType.BAD_REQUEST)
+                .message("O argumento [" + argumentos + "] possui um valor inválido!")
                 .build();
     }
 

@@ -7,19 +7,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Representa o modelo de dados de uma Consulta.")
 public record AgendamentoDTO(
 
-        @Schema(description = "Identificador da consulta. No schema GraphQL é um ID! e trafega como String.", example = "1")
+        @Schema(description = "Identificador da consulta", implementation = String.class, example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         Integer id,
 
-        @Schema(description = "Nome do médico responsável pela consulta", example = "Carlos Andrade")
+        @Schema(description = "Nome do médico responsável pela consulta", example = "JOAO", requiredMode = Schema.RequiredMode.REQUIRED)
         String nomeMedico,
 
-        @Schema(description = "Data e hora da consulta, no formato dd/MM/yyyy - HH:mm:ss", example = "20/02/2026 - 09:00:00")
+        @Schema(description = "Data e hora da consulta, no formato dd/MM/yyyy - HH:mm:ss", example = "22/08/2026 - 08:00:00", requiredMode = Schema.RequiredMode.REQUIRED)
         String dataHoraConsulta,
 
-        @Schema(description = "Observação registrada no agendamento", example = "Consulta de rotina")
+        @Schema(description = "Observação registrada no agendamento", example = "Primeira consulta cardiológica.", types = {"string", "null"})
         String observacao,
 
-        @Schema(description = "Data do cadastro do agendamento, no formato dd/MM/yyyy - HH:mm:ss", example = "10/01/2026 - 14:35:12")
+        @Schema(description = "Data do cadastro do agendamento, no formato dd/MM/yyyy - HH:mm:ss", example = "20/08/2026 - 09:15:00", requiredMode = Schema.RequiredMode.REQUIRED)
         String dataCadastro
 
 ) {

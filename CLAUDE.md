@@ -37,11 +37,12 @@ Não há Spring Security, MapStruct nem Bean Validation neste projeto — a API 
 
 ### Documentação OpenAPI
 
-Como não existe nenhum `@RestController`, o SpringDoc não encontra handler algum para inspecionar. Por isso o `SwaggerConfig` **declara manualmente** o endpoint `POST /graphql` (`OpenAPI.path(...)`), com `requestBody`, respostas `200`/`400`/`500` e exemplos. Sem isso a Swagger UI sobe com *"No operations defined in spec"*.
+Como não existe nenhum `@RestController`, o SpringDoc não encontra handler algum para inspecionar. Por isso o `SwaggerConfig` **declara manualmente** o endpoint `POST /graphql` (`OpenAPI.path(...)`), com `requestBody`, respostas `200`/`400`/`405`/`415`/`500`, os dois media types de resposta (`application/json` e `application/graphql-response+json`) e exemplos. Sem isso a Swagger UI sobe com *"No operations defined in spec"*. Os exemplos reproduzem respostas reais da API: ao mudar o comportamento de erro, suba a aplicação, repita a chamada e atualize o exemplo correspondente.
 
 Convenções desse arquivo, para mantê-lo coerente ao evoluir a API:
 
-- Os schemas dos DTOs **não** são escritos à mão: `registrarSchema(...)` resolve a classe via `ModelConverters`, então as anotações `@Schema` dos records continuam sendo a fonte de verdade. Ao criar um DTO novo que apareça na resposta, anote-o e registre a classe raiz.
+- Os schemas dos DTOs **não** são escritos à mão: `registrarSchema(...)` resolve a classe via `ModelConverters.getInstance(true)`, então as anotações `@Schema` dos records continuam sendo a fonte de verdade. Ao criar um DTO novo que apareça na resposta, anote-o e registre a classe raiz.
+- O documento é OpenAPI 3.1, e por isso `nullable(true)` é descartado na serialização. As anotações seguem o `schema.graphqls`: campo `!` leva `requiredMode = Schema.RequiredMode.REQUIRED`, campo anulável leva `types = {"string", "null"}` e campo `ID` leva `implementation = String.class`, porque trafega como texto. Nos schemas montados em código, use `types(Set.of("object", "null"))`.
 - Os schemas `GraphQlRequest`, `GraphQlResponse` e `GraphQlError` descrevem o envelope da especificação GraphQL e são montados programaticamente — não existem classes correspondentes, e não devem ser criadas só para isso.
 - O SpringDoc **descarta schemas não referenciados**; registrar uma classe que nada aponta não produz efeito no documento final.
 - Os exemplos JSON ficam em constantes de texto e passam por `json(...)`, que os converte em objetos para a Swagger UI renderizar JSON de verdade em vez de uma string escapada. Um JSON malformado quebra a subida do contexto.
@@ -114,6 +115,7 @@ O padrão adotado é **organizar por camada e, dentro de cada camada, por domín
 src/main/java/br/com/fiap/historicoapi/
 ├── config/
 │   ├── DataBaseConfig.java        # DataSource dos perfis dev e prod
+│   ├── GraphQlRouterConfig.java   # Responde 405 para PUT, PATCH e DELETE em /graphql
 │   └── SwaggerConfig.java         # OpenAPI — documenta o endpoint POST /graphql
 ├── controller/
 │   └── HistoricoController.java   # @QueryMapping getHistoricoPaciente
@@ -166,9 +168,9 @@ Optional<Paciente> findById(@NonNull Integer id);
 
 **DTOs são `record` com factory `from(...)`.** `PacienteDTO`, `AgendamentoDTO` e `HistoricoPacienteDTO` convertem a entidade no próprio DTO. Datas nunca vão como `LocalDate`/`LocalDateTime` para a resposta: passam por `FormatadorData`, que produz `dd/MM/yyyy` e `dd/MM/yyyy - HH:mm:ss`. No schema GraphQL essas datas são `String`.
 
-**Tratamento de erros em dois pipelines.** O pipeline do GraphQL não passa pelo `HandlerExceptionResolver` do Spring MVC, então `GlobalExceptionHandler` mantém dois conjuntos de handlers: os `@ExceptionHandler` (respostas REST com `ErrorResponseDTO`) e os `@GraphQlExceptionHandler` (que devolvem `GraphQLError` com o `ErrorType` correto). **Ao criar uma nova exceção de negócio, registre-a nos dois lugares** — sem o handler GraphQL ela chega ao cliente como `INTERNAL_ERROR` com a mensagem mascarada.
+**Tratamento de erros em dois pipelines.** O pipeline do GraphQL não passa pelo `HandlerExceptionResolver` do Spring MVC, então `GlobalExceptionHandler` mantém dois conjuntos de handlers: os `@ExceptionHandler` (respostas REST com `ErrorResponseDTO`) e os `@GraphQlExceptionHandler` (que devolvem `GraphQLError` com o `ErrorType` correto). **Ao criar uma nova exceção de negócio, registre-a nos dois lugares** — sem o handler GraphQL ela chega ao cliente como `INTERNAL_ERROR` com a mensagem mascarada. A `BindException`, lançada quando um argumento não converte para o tipo do parâmetro (um id não numérico, por exemplo), também tem handler GraphQL próprio e vira `BAD_REQUEST`.
 
-**Não devolva `ex.getMessage()` de exceção que não seja nossa.** Os handlers de `Exception` e de `DataIntegrityViolationException` logam a exceção completa com `log.error(..., ex)` e respondem com texto fixo: a mensagem do Postgres carrega nome de tabela, coluna e constraint, e a de uma falha inesperada pode trazer qualquer detalhe interno. Só as exceções do próprio domínio (`RequisicaoInvalidaException`, `PacienteNaoEncontradoException`) têm mensagem escrita para o cliente e podem ser repassadas.
+**Não devolva `ex.getMessage()` de exceção que não seja nossa.** Os handlers de `Exception` e de `DataIntegrityViolationException` logam a exceção completa com `log.error(..., ex)` e respondem com texto fixo, e os de `HttpMessageNotReadableException` e `ServerWebInputException` registram a causa com `log.warn` e também respondem com texto fixo. A mensagem do Jackson traz o nome de classes internas do Spring, a do Postgres carrega nome de tabela, coluna e constraint, e a de uma falha inesperada pode trazer qualquer detalhe interno. Só as exceções do próprio domínio (`RequisicaoInvalidaException`, `PacienteNaoEncontradoException`) têm mensagem escrita para o cliente e podem ser repassadas.
 
 **Validação no serviço.** `HistoricoService.validarPacienteId` rejeita `null` e valores `<= 0` com `RequisicaoInvalidaException`; paciente inexistente vira `PacienteNaoEncontradoException`. Log de entrada e de saída com `@Slf4j`.
 
@@ -201,7 +203,7 @@ Classes base em `src/test/java/br/com/fiap/historicoapi/config/`:
 
 - `AbstractTest` — concentra `@Transactional`, `@ActiveProfiles("test")`, `@Import(TestDataBaseConfig.class)` e `@TestMethodOrder`. Base dos testes de serviço, repositório e utilitários.
 - `AbstractControllerTest` — o mesmo, mais `@AutoConfigureGraphQlTester` e o helper `executarQuery(documento, nomeVariavel, valor)`.
-- `AbstractHttpControllerTest` — o mesmo helper, mas com `@AutoConfigureHttpGraphQlTester` e **sem `@Transactional`**: a query sai pela camada HTTP de verdade, passando pelo context path e sem transação aberta pelo teste. Exige `@SpringBootTest(webEnvironment = RANDOM_PORT)` na classe concreta.
+- `AbstractHttpControllerTest` — o mesmo helper, mas com `@AutoConfigureHttpGraphQlTester` e **sem `@Transactional`**: a query sai pela camada HTTP de verdade, passando pelo context path e sem transação aberta pelo teste. Exige `@SpringBootTest(webEnvironment = RANDOM_PORT)` na classe concreta. Traz também `enviarRequisicao(metodo, corpo)`, que envia um corpo cru pelo `RestClient` e devolve o `ErrorResponseDTO`: é o caminho para testar erros de transporte que o `HttpGraphQlTester` não consegue produzir, como JSON malformado, corpo sem `query` e método não suportado.
 
 Convenções ao escrever testes, seguindo o que já existe:
 
@@ -228,7 +230,7 @@ Os caminhos de erro são verificados pelo `.errors().satisfy(...)`, comparando o
 
 **Cobertura.** `jacocoTestReport` roda automaticamente depois de `test` e gera o HTML em `build/reports/jacoco/test/html/index.html`. A cobertura **exclui** de propósito `config/`, `enums/`, `exceptions/`, `model/` e a classe `HistoricoAPIApplication` — note que `util/` **não** está excluído e conta no cálculo. Mantenha essa lista alinhada se novos pacotes puramente estruturais forem criados, e atualize a tabela de cobertura do `README.md` quando o número mudar.
 
-Situação atual: 28 testes em 7 classes, com 100% de instruções, linhas, métodos, classes e branches. O branch `pacienteId <= 0` de `HistoricoService.validarPacienteId`, que antes ficava descoberto, é exercitado com id zero e negativo tanto no teste de serviço quanto no de controller.
+Situação atual: 33 testes em 7 classes, com 100% de instruções, linhas, métodos, classes e branches. O branch `pacienteId <= 0` de `HistoricoService.validarPacienteId`, que antes ficava descoberto, é exercitado com id zero e negativo tanto no teste de serviço quanto no de controller.
 
 ## Docker
 

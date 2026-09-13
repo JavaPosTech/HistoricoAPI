@@ -322,17 +322,31 @@ Como a API **não expõe rotas REST**, o SpringDoc não teria nada a inspecionar
 
 | Item | Descrição |
 | --- | --- |
-| `POST /graphql` | Endpoint único da API, com o corpo da requisição (`query`, `operationName` e `variables`) e um exemplo pronto da query `getHistoricoPaciente`. |
-| `GraphQlRequest` | Formato do corpo de uma requisição GraphQL sobre HTTP. |
+| `POST /graphql` | Endpoint único da API, com o corpo da requisição (`query`, `operationName` e `variables`), um exemplo pronto da query `getHistoricoPaciente` e as respostas `200`, `400`, `405`, `415` e `500`. |
+| `GraphQlRequest` | Formato do corpo de uma requisição GraphQL sobre HTTP. Propriedades fora do envelope são rejeitadas. |
 | `GraphQlResponse` | Envelope `{ data, errors }` definido pela especificação GraphQL. |
 | `GraphQlError` | Estrutura de erro do GraphQL, incluindo `extensions.classification`. |
-| `PacienteDTO`, `HistoricoPacienteDTO`, `AgendamentoDTO` | Modelos de saída, resolvidos automaticamente a partir das anotações `@Schema` dos próprios records. |
+| `PacienteDTO`, `HistoricoPacienteDTO`, `AgendamentoDTO` | Modelos de saída, resolvidos automaticamente a partir das anotações `@Schema` dos próprios records, com os campos obrigatórios e anuláveis iguais aos do `schema.graphqls`. |
 | `ErrorResponseDTO` | Resposta de erro do `GlobalExceptionHandler` do Spring MVC, usada nos códigos `400` e `500`. |
 
-A resposta `200` traz três exemplos — paciente encontrado, paciente inexistente (`NOT_FOUND`) e id inválido (`BAD_REQUEST`) —, o que deixa explícito o comportamento do GraphQL de responder `200` mesmo quando a execução falha, sinalizando o problema no array `errors`.
+Os exemplos foram tirados de respostas reais da API e cobrem cada classificação de erro:
 
+| Situação | Classificação | Status com `application/json` | Status com `application/graphql-response+json` |
+| --- | --- | --- | --- |
+| Paciente encontrado | - | `200` | `200` |
+| Paciente inexistente | `NOT_FOUND` | `200` | `200` |
+| Id zero ou negativo | `BAD_REQUEST` | `200` | `200` |
+| Id não numérico | `BAD_REQUEST` | `200` | `200` |
+| Id nulo ou ausente, campo inexistente | `ValidationError` | `200` | `400` |
+| Query malformada | `InvalidSyntax` | `200` | `400` |
+| JSON malformado, propriedade desconhecida ou de tipo incompatível no corpo | `ErrorResponseDTO` | `400` | `400` |
+| Corpo sem `query` | `ErrorResponseDTO` | `400` | `400` |
+| `PUT`, `PATCH` ou `DELETE` | `ErrorResponseDTO` | `405` | `405` |
+| `GET` | sem corpo | `405` | `405` |
+| Content-Type ou Accept não suportado | sem corpo | `415` | `415` |
+| Falha inesperada | `ErrorResponseDTO` | `500` | `500` |
 
-> ⚠️ Os campos declarados como `ID!` no schema GraphQL trafegam como **String** na resposta (`"1"`), embora os *schemas* da página os descrevam como inteiros — a conversão é feita pela própria especificação GraphQL.
+Com `application/json`, o padrão, o GraphQL responde `200` mesmo quando a execução falha e sinaliza o problema no array `errors`. As respostas de erro trazem sempre um texto fixo: a mensagem original do Jackson ou do Spring, que carrega nomes de classes internas, fica apenas no log. Os campos do tipo `ID` trafegam como texto (`"1"`), e é assim que os *schemas* da página os descrevem.
 
 > ℹ️ A API **não exige autenticação** e a documentação não declara nenhum *security scheme*: não há Spring Security no classpath nem filtro de autenticação neste projeto.
 
@@ -369,7 +383,7 @@ Os dois cenários reais funcionam sem configuração adicional: em um **banco va
 
 ### 📊 Cobertura
 
-A suíte conta atualmente com **28 testes distribuídos em 7 classes**, cobrindo o resolver GraphQL (pelo `GraphQlTester` e pelo transporte HTTP real), os caminhos de erro `NOT_FOUND` e `BAD_REQUEST`, a camada de serviço, os três repositórios e o utilitário de formatação de datas.
+A suíte conta atualmente com **33 testes distribuídos em 7 classes**, cobrindo o resolver GraphQL (pelo `GraphQlTester` e pelo transporte HTTP real), os caminhos de erro `NOT_FOUND` e `BAD_REQUEST` (inclusive id não numérico), os erros de transporte `400` e `405`, a camada de serviço, os três repositórios e o utilitário de formatação de datas.
 
 | Métrica | Cobertura |
 | --- | --- |
